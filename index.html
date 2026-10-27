@@ -34,7 +34,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .sum span{color:var(--mute);font-size:13px}
 .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card);max-height:70vh}
 table{border-collapse:collapse;width:100%;min-width:1100px}
-th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
 th{position:sticky;top:0;background:var(--accbg);color:var(--ink);font-size:13px;z-index:1}
 td input{width:76px;font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 td.n{font-variant-numeric:tabular-nums}
@@ -51,7 +51,12 @@ td a{color:var(--acc);font-weight:600}
 .rw{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
 .rw:last-child{border-bottom:0}
 .rw input{width:130px;font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
-.rw b{font-variant-numeric:tabular-nums;text-align:left}
+.rw b{font-variant-numeric:tabular-nums;text-align:center}
+input,select{text-align:center;text-align-last:center}
+.sum div{text-align:center}
+.big{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--accbg);border:2px solid var(--acc);border-radius:10px;padding:10px 16px;margin:12px 0;max-width:560px;text-align:center}
+.big span{display:block;color:var(--mute);font-size:14px}
+.big b{font-size:40px;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--acc)}
 #det h2{margin:6px 0 0}
 button:disabled{opacity:.4;cursor:default}
 select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
@@ -112,7 +117,7 @@ const COLS={
 function calc(o){
   const net=o.h+o.ot-o.late-o.disc;
   const sal=o.t==='s'?net/S.div*o.rate+o.allow:net*o.hr+o.trips*o.tr+o.orders*o.or+o.allow;
-  o.net=net;o.sal=sal;o.pay=sal-(o.adv+o.sh+o.ins);o.tot=o.pay+o.bonus;
+  o.net=net;o.avg=o.days?o.h/o.days:0;o.sal=sal;o.pay=sal-(o.adv+o.sh+o.ins);o.tot=o.pay+o.bonus;
   o.diff=o.ref!=null&&Math.abs(o.tot-o.ref)>0.5;
 }
 function parse(ws,t){
@@ -201,10 +206,10 @@ function render(){
   draw();
 }
 function draw(){
-  const R=rows(),C=COLS[cur];
-  $('tbl').innerHTML='<thead><tr><th>الفرع</th><th>الموظف</th><th>الكود</th>'+C.map(c=>`<th>${c[1]}</th>`).join('')+'<th>المرتب</th><th>الصافي</th><th>الإجمالي</th><th>الشيت</th><th>تنبيه</th></tr></thead><tbody>'+
-  R.map(({o,i})=>`<tr id="r${i}" class="${o.diff?'diff':''}"><td>${o.branch||'—'}</td><td><a href="#" data-d="${i}">${o.name}</a></td><td>${o.code}</td>`+
-   C.map(([k])=>`<td>${fld(o,k,i)}</td>`).join('')+
+  const R=rows(),C=SP[cur];
+  $('tbl').innerHTML='<thead><tr>'+C.map(c=>`<th>${c[1]}</th>`).join('')+'<th>المرتب</th><th>الصافي</th><th>الإجمالي</th><th>الشيت</th><th>تنبيه</th></tr></thead><tbody>'+
+  R.map(({o,i})=>`<tr id="r${i}" class="${o.diff?'diff':''}">`+
+   C.map(c=>cellT(o,c,i)).join('')+
    `<td class="n" data-o="sal"></td><td class="n" data-o="pay"></td><td class="n tot" data-o="tot"></td><td class="n" data-o="ref"></td><td data-o="w"></td></tr>`).join('')+'</tbody>';
   R.forEach(({o,i})=>fill(i));
   summary(R);
@@ -214,7 +219,7 @@ function fill(i){
   calc(o);tr.className=o.diff?'diff':'';
   const set=(k,t)=>tr.querySelector(`[data-o="${k}"]`).innerHTML=t;
   set('sal',fmt(o.sal));set('pay',fmt(o.pay));set('tot',fmt(o.tot));set('ref',o.ref==null?'—':fmt(o.ref));
-  set('w',warns(o).map(([c,t])=>`<span class="tag ${c}">${t}</span>`).join(''));
+  for(const [k,,t] of SP[cur])if(t[0]==='r')set(k,(+o[k]).toFixed(+t[1]));set('w',warns(o).map(([c,t])=>`<span class="tag ${c}">${t}</span>`).join(''));
 }
 function summary(R){
   const L=R.map(r=>r.o);
@@ -249,24 +254,34 @@ let dl=[],dp=0;
 function openDet(i){dl=rows().map(r=>r.i);dp=dl.indexOf(i);if(dp<0){dl=[i];dp=0}$('app').classList.add('hide');$('det').classList.remove('hide');renderDet();window.scrollTo(0,0)}
 function lines(o){const f=fmt;const a=[['صافي الساعات',`${f(o.h)} + ${f(o.ot)} − ${f(o.late)} − ${f(o.disc)} = ${f(o.net)}`]];
  if(o.t==='s')a.push(['المرتب',`${f(o.net)} ÷ ${S.div} × ${f(o.rate)} + ${f(o.allow)} = ${f(o.sal)}`]);
- else a.push(['مرتب الساعات',`${f(o.net)} × ${f(o.hr)} = ${f(o.net*o.hr)}`],['التحويلات',`${o.trips} × ${f(o.tr)} = ${f(o.trips*o.tr)}`],['الأوردرات',`${o.orders} × ${f(o.or)} = ${f(o.orders*o.or)}`],['المرتب',`${f(o.sal)} (شامل العدية ${f(o.allow)})`]);
+ else a.push(['مرتب الساعات',`${f(o.net)} × ${f(o.hr)} = ${f(o.net*o.hr)}`],['التحويلات',`${f(o.trips)} × ${f(o.tr)} = ${f(o.trips*o.tr)}`],['الأوردرات',`${f(o.orders)} × ${f(o.or)} = ${f(o.orders*o.or)}`],['المرتب',`${f(o.sal)} (شامل العدية ${f(o.allow)})`]);
  a.push(['الخصومات',`${f(o.adv)} + ${f(o.sh)} + ${f(o.ins)} = ${f(o.adv+o.sh+o.ins)}`],['صافي المرتب',f(o.pay)],['الإجمالي بعد الحافز',f(o.tot)],['الإجمالي في الشيت',(o.ref==null?'—':f(o.ref))+(o.diff?' (مختلف)':'')]);return a}
-function brk(){const o=D[cur][dl[dp]];calc(o);$('brk').innerHTML=lines(o).map(([a,b])=>`<div class="rw"><span>${a}</span><b>${b}</b></div>`).join('')+warns(o).map(([c,t])=>`<span class="tag ${c}">${t}</span>`).join('')}
-function renderDet(){const o=D[cur][dl[dp]];$('det').innerHTML=`<div class="bar"><button class="ghost" type="button" data-n="back">رجوع للجدول</button><button class="ghost" type="button" data-n="-1" ${dp?'':'disabled'}>الموظف السابق</button><button class="ghost" type="button" data-n="1" ${dp<dl.length-1?'':'disabled'}>الموظف التالي</button><span>${dp+1} من ${dl.length}</span></div><h2>${o.name}</h2><p class="sub">${o.branch||'بدون فرع'} - كود ${o.code||'—'}</p><div class="cardx">`+COLS[cur].map(([k,l])=>`<div class="rw"><label for="f${k}">${l}</label>${fld(o,k,'')}</div>`).join('')+`</div><div class="cardx" id="brk"></div>`;brk()}
+function brk(){const o=D[cur][dl[dp]];calc(o);$('bigtot').textContent=fmt(o.tot);for(const [k,,t] of SP[cur])if(t[0]==='r'){const e=$('det').querySelector('[data-o="'+k+'"]');if(e)e.textContent=(+o[k]).toFixed(+t[1])}$('brk').innerHTML=lines(o).map(([a,b])=>`<div class="rw"><span>${a}</span><b>${b}</b></div>`).join('')+warns(o).map(([c,t])=>`<span class="tag ${c}">${t}</span>`).join('')}
+function renderDet(){const o=D[cur][dl[dp]];$('det').innerHTML=`<div class="bar"><button class="ghost" type="button" data-n="back">رجوع للجدول</button><button class="ghost" type="button" data-n="-1" ${dp?'':'disabled'}>الموظف السابق</button><button class="ghost" type="button" data-n="1" ${dp<dl.length-1?'':'disabled'}>الموظف التالي</button><span>${dp+1} من ${dl.length}</span></div><h2>${o.name}</h2><p class="sub">${o.branch||'بدون فرع'} - كود ${o.code||'—'}</p><div class="big"><span>إجمالي المرتب</span><b id="bigtot"></b></div><div class="cardx">`+SP[cur].map(c=>rowD(o,c)).join('')+`</div><div class="cardx" id="brk"></div>`;brk()}
 $('det').addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;setF(D[cur][dl[dp]],k,e.target.value);brk()});
 $('det').addEventListener('click',e=>{const n=e.target.dataset.n;if(!n)return;if(n==='back'){$('det').classList.add('hide');$('app').classList.remove('hide');draw();return}dp+=+n;renderDet()});
 $('tbl').addEventListener('click',e=>{const d=e.target.dataset.d;if(d!=null){e.preventDefault();openDet(+d)}});
-const PM=['','Dopay','Paymint','Instapay','Cash'],MK=new Set(['rate','hr','tr','or','pm']);
+const PM=['','Dopay','Paymint','Instapay','Cash'],MK=new Set(['branch','rate','hr','tr','or','pm']);
 const F=['t','code','name','branch','pm','h','days','abs','hol','late','ot','disc','allow','adv','sh','ins','bonus','rate','hr','tr','or','trips','orders','ref','sal','pay','tot'];
 let DB=null,CAN=true,MAST={},tm={},ow='';
 const dt=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v);
 const flash=t=>{$('st').textContent=t};
-function fld(o,k,i){const a=i===''?` id="f${k}"`:` data-i="${i}"`;
- if(k==='pm')return `<select data-k="pm"${a}>${PM.map(p=>`<option value="${p}"${o.pm===p?' selected':''}>${p||'—'}</option>`).join('')}</select>`;
- return `<input type="number" step="any" value="${+o[k].toFixed(4)}" data-k="${k}"${a} aria-label="${k}">`}
+const SP={
+s:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['rate','قيمة الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['disc','خصم','e2'],['net','صافى الساعات','r2'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']],
+d:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['hr','سعر الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['disc','خصم','e2'],['net','صافى الساعات','r2'],['trips','التحويلات','e0'],['tr','سعر التحويلة','e0'],['orders','الأوردرات','e0'],['or','سعر الأوردر','e0'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']]
+};
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+function fld(o,k,i,t){const a=i===''?` id="f${k}"`:` data-i="${i}"`;
+ if(t==='sel')return `<select data-k="pm"${a}>${PM.map(p=>`<option value="${p}"${o.pm===p?' selected':''}>${p||'—'}</option>`).join('')}</select>`;
+ if(t==='t')return `<input type="text" value="${esc(o[k])}" data-k="${k}"${a} aria-label="${k}" style="width:150px">`;
+ const d=+t[1],v=(+o[k]||0).toFixed(d);
+ if(t[0]==='r')return v;
+ return `<input type="number" step="${d?'any':'1'}" value="${v}" data-k="${k}"${a} aria-label="${k}">`}
+function cellT(o,[k,l,t],i){return t==='n'?`<td><a href="#" data-d="${i}">${esc(o.name)}</a></td>`:t==='x'?`<td>${esc(o.code)}</td>`:t[0]==='r'?`<td data-o="${k}">${fld(o,k,i,t)}</td>`:`<td>${fld(o,k,i,t)}</td>`}
+function rowD(o,[k,l,t]){const v=t==='n'?esc(o.name):t==='x'?esc(o.code):fld(o,k,'',t);return `<div class="rw"><label for="f${k}">${l}</label>${t[0]==='r'?`<b data-o="${k}">${v}</b>`:v}</div>`}
 function mast(o){const m={t:o.t,code:o.code,name:o.name,branch:o.branch,pm:o.pm||''};if(o.t==='s')m.rate=o.rate;else{m.hr=o.hr;m.tr=o.tr;m.or=o.or}return m}
 function applyMasters(){for(const o of D.s.concat(D.d)){const m=MAST[o.code];if(m&&m.t===o.t)for(const k of MK)if(m[k]!=null)o[k]=m[k]}}
-function setF(o,k,v){o[k]=k==='pm'?v:num(v);if(MK.has(k)&&MODE!=='pay'&&DB&&CAN){clearTimeout(tm[o.code]);tm[o.code]=setTimeout(()=>save1(o),800)}}
+function setF(o,k,v){o[k]=(k==='pm'||k==='branch')?v:num(v);if(MK.has(k)&&MODE!=='pay'&&DB&&CAN){clearTimeout(tm[o.code]);tm[o.code]=setTimeout(()=>save1(o),800)}}
 const fail=e=>flash('فشل ('+(e.message||e.code)+')');
 async function save1(o){const m=mast(o);const {error}=await SB.from('masters').upsert({code:o.code,data:m,updated_at:new Date().toISOString()});if(error)return fail(error);MAST[o.code]=m;flash('اتحفظ: '+o.name)}
 async function saveAll(){const rows=[],emps={};for(const o of D.s.concat(D.d)){if(o.t==='s'&&!o.rate&&!o.pm)continue;const m=mast(o);emps[o.code]=m;rows.push({code:o.code,data:m,updated_at:new Date().toISOString()})}const {error}=await SB.from('masters').upsert(rows);if(error)return fail(error);Object.assign(MAST,emps);flash('اتحفظ '+rows.length+' موظف')}
