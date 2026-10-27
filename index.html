@@ -109,15 +109,24 @@ tr.diff td{background:var(--badbg)}
 #det>.bar{justify-content:center;}
 #det>h2,#det>p.sub{text-align:center;}
 #det>.big,#det>.cardx{width:100%;max-width:560px;margin:14px auto;}
-#det .rw{gap:16px;}
-#det .rw>span,#det .rw>label{flex:1;text-align:center;}
-#det .rw input,#det .rw select{flex:0 1 180px;max-width:55%;}
-#det #brk .rw b{flex:1;text-align:center;}
+#det .rw{gap:12px;}
+/* Labels stay aligned to the right; values/inputs are centered in the left column */
+#det .cardx:not(#brk) .rw{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,180px);align-items:center;}
+#det .cardx:not(#brk) .rw>label{grid-column:2;grid-row:1;text-align:right;justify-self:stretch;flex:none;}
+#det .cardx:not(#brk) .rw>input,#det .cardx:not(#brk) .rw>select,#det .cardx:not(#brk) .rw>b{grid-column:1;grid-row:1;justify-self:stretch;width:100%;max-width:100%;text-align:center;}
+#det #brk .rw>span{flex:1;text-align:right;}
+#det #brk .rw>b{flex:1;text-align:center;}
+#det .field-row{position:relative;padding-inline-start:24px;cursor:grab;}
+#det .field-row:active{cursor:grabbing;}
+#det .field-row .drag-handle{position:absolute;inset-inline-start:3px;top:50%;transform:translateY(-50%);color:var(--mute);font-size:17px;user-select:none;}
+#det .field-row.dragging{opacity:.45;background:var(--accbg);}
+#det .field-row.drop-target{border-top:2px solid var(--acc);}
 @media(max-width:600px){
   #det{padding-inline:0;}
   #det>.big,#det>.cardx{max-width:100%;}
   #det .rw{gap:8px;}
-  #det .rw input,#det .rw select{max-width:58%;width:150px;}
+  #det .cardx:not(#brk) .rw{grid-template-columns:minmax(0,1fr) minmax(115px,45%);}
+  #det .cardx:not(#brk) .rw>input,#det .cardx:not(#brk) .rw>select{max-width:100%;width:100%;}
   #det .big b{font-size:34px;}
 }
 
@@ -351,10 +360,20 @@ function lines(o){const f=fmt;const a=[['صافي الساعات',`${f(o.h)} + $
  else a.push(['مرتب الساعات',`${f(o.net)} × ${f(o.hr)} = ${f(o.net*o.hr)}`],['التحويلات',`${f(o.trips)} × ${f(o.tr)} = ${f(o.trips*o.tr)}`],['الأوردرات',`${f(o.orders)} × ${f(o.or)} = ${f(o.orders*o.or)}`],['المرتب',`${f(o.sal)} (شامل العدية ${f(o.allow)})`]);
  a.push(['الخصومات',`${f(o.adv)} + ${f(o.sh)} + ${f(o.ins)} = ${f(o.adv+o.sh+o.ins)}`],['صافي المرتب',f(o.pay)],['الإجمالي بعد الحافز',f(o.tot)],['الإجمالي في الشيت',(o.ref==null?'—':f(o.ref))+(o.diff?' (مختلف)':'')]);return a}
 function brk(){const o=D[cur][dl[dp]];calc(o);$('bigtot').textContent=fmt(o.tot);for(const [k,,t] of SP[cur])if(t[0]==='r'){const e=$('det').querySelector('[data-o="'+k+'"]');if(e)e.textContent=(+o[k]).toFixed(+t[1])}$('brk').innerHTML=lines(o).map(([a,b])=>`<div class="rw"><span>${a}</span><b>${b}</b></div>`).join('')+warns(o).map(([c,t])=>`<span class="tag ${c}">${t}</span>`).join('')}
-function renderDet(){const o=D[cur][dl[dp]];$('det').innerHTML=`<div class="bar"><button class="ghost" type="button" data-n="back">رجوع للجدول</button><button class="ghost" type="button" data-n="-1" ${dp?'':'disabled'}>الموظف السابق</button><button class="ghost" type="button" data-n="1" ${dp<dl.length-1?'':'disabled'}>الموظف التالي</button><span>${dp+1} من ${dl.length}</span></div><h2>${o.name}</h2><p class="sub">${o.branch||'بدون فرع'} - كود ${o.code||'—'}</p><div class="big"><span>إجمالي المرتب</span><b id="bigtot"></b></div><div class="cardx">`+SP[cur].map(c=>rowD(o,c)).join('')+`</div><div class="cardx" id="brk"></div>`;brk()}
+function detailFieldOrder(){
+ const base=SP[cur].slice(),key='payroll-field-order-'+cur;
+ try{const saved=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(saved))return base;return saved.map(k=>base.find(c=>c[0]===k)).filter(Boolean).concat(base.filter(c=>!saved.includes(c[0])))}catch(_){return base}
+}
+function saveDetailFieldOrder(){try{localStorage.setItem('payroll-field-order-'+cur,JSON.stringify([...$('det').querySelectorAll('.field-row')].map(r=>r.dataset.field)))}catch(_){}}
+function renderDet(){const o=D[cur][dl[dp]];$('det').innerHTML=`<div class="bar"><button class="ghost" type="button" data-n="back">رجوع للجدول</button><button class="ghost" type="button" data-n="-1" ${dp?'':'disabled'}>الموظف السابق</button><button class="ghost" type="button" data-n="1" ${dp<dl.length-1?'':'disabled'}>الموظف التالي</button><span>${dp+1} من ${dl.length}</span></div><h2>${o.name}</h2><p class="sub">${o.branch||'بدون فرع'} - كود ${o.code||'—'}</p><div class="big"><span>إجمالي المرتب</span><b id="bigtot"></b></div><div class="cardx" id="edit-fields">`+detailFieldOrder().map(c=>rowD(o,c)).join('')+`</div><div class="cardx" id="brk"></div><p class="sub" style="text-align:center">تقدر تغيّر ترتيب الخانات بالسحب من علامة ⠿ على الشمال.</p>`;brk()}
 function handleDetailEdit(e){const k=e.target.dataset.k;if(!k)return;setF(D[cur][dl[dp]],k,e.target.value);if(k==='branch'){const o=D[cur][dl[dp]];$('det').querySelector('.sub').textContent=(o.branch||'بدون فرع')+' - كود '+(o.code||'—');}brk()}
 $('det').addEventListener('input',handleDetailEdit);$('det').addEventListener('change',handleDetailEdit);
 $('det').addEventListener('click',e=>{const n=e.target.dataset.n;if(!n)return;if(n==='back'){$('det').classList.add('hide');$('app').classList.remove('hide');draw();return}dp+=+n;renderDet()});
+let draggedField=null;
+$('det').addEventListener('dragstart',e=>{const row=e.target.closest('.field-row');if(!row)return;draggedField=row;row.classList.add('dragging');if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',row.dataset.field)}});
+$('det').addEventListener('dragover',e=>{const row=e.target.closest('.field-row');if(!draggedField||!row||row===draggedField)return;e.preventDefault();$('det').querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));row.classList.add('drop-target')});
+$('det').addEventListener('drop',e=>{const row=e.target.closest('.field-row');if(!draggedField||!row||row===draggedField)return;e.preventDefault();const box=$('edit-fields');const r=row.getBoundingClientRect();box.insertBefore(draggedField,e.clientY<r.top+r.height/2?row:row.nextSibling);saveDetailFieldOrder();$('det').querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});
+$('det').addEventListener('dragend',()=>{if(draggedField)draggedField.classList.remove('dragging');draggedField=null;$('det').querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});
 $('tbl').addEventListener('click',e=>{const d=e.target.dataset.d;if(d!=null){e.preventDefault();openDet(+d)}});
 const PM=['','Dopay','Paymint','Instapay','Cash'],MK=new Set(['branch','rate','hr','tr','or','pm']);
 const F=['t','code','name','branch','pm','h','days','abs','hol','late','ot','disc','allow','adv','sh','ins','bonus','rate','hr','tr','or','trips','orders','ref','sal','pay','tot'];
@@ -378,7 +397,7 @@ function fld(o,k,i,t){const a=i===''?` id="f${k}"`:` data-i="${i}"`;
  if(t[0]==='r')return v;
  return `<input type="number" step="${d?'any':'1'}" value="${v}" data-k="${k}"${a} aria-label="${k}">`}
 function cellT(o,[k,l,t],i){return t==='n'?`<td><a href="#" data-d="${i}">${esc(o.name)}</a></td>`:t==='x'?`<td>${esc(o.code)}</td>`:t[0]==='r'?`<td data-o="${k}">${fld(o,k,i,t)}</td>`:`<td>${fld(o,k,i,t)}</td>`}
-function rowD(o,[k,l,t]){const v=t==='n'?esc(o.name):t==='x'?esc(o.code):fld(o,k,'',t);return `<div class="rw"><label for="f${k}">${l}</label>${t[0]==='r'?`<b data-o="${k}">${v}</b>`:v}</div>`}
+function rowD(o,[k,l,t]){const v=t==='n'?esc(o.name):t==='x'?esc(o.code):fld(o,k,'',t);return `<div class="rw field-row" draggable="true" data-field="${k}"><span class="drag-handle" aria-hidden="true">⠿</span><label for="f${k}">${l}</label>${t[0]==='r'?`<b data-o="${k}">${v}</b>`:v}</div>`}
 function mast(o){const m={t:o.t,code:o.code,name:o.name,branch:o.branch,pm:o.pm||''};if(o.t==='s')m.rate=o.rate;else{m.hr=o.hr;m.tr=o.tr;m.or=o.or}return m}
 function applyMasters(){for(const o of D.s.concat(D.d)){const m=MAST[o.code];if(m&&m.t===o.t)for(const k of MK)if(m[k]!=null)o[k]=m[k]}}
 function setF(o,k,v){o[k]=(k==='pm'||k==='branch')?v:num(v);scheduleDraft();if(MK.has(k)&&MODE!=='pay'&&DB&&CAN){clearTimeout(tm[o.code]);tm[o.code]=setTimeout(()=>save1(o),800)}}
@@ -418,6 +437,13 @@ const ready=(async()=>{if(!SB){flash('لسه لازم تحط رابط ومفتا
  $('drop').classList.add('hide');const {data}=await SB.auth.getSession();if(data.session)await afterLogin();else $('login').classList.remove('hide')})();
 $('lg').addEventListener('click',async()=>{const {error}=await SB.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error){$('lerr').textContent='الإيميل أو الباسورد غلط';return}$('lerr').textContent='';await afterLogin()});
 $('out').addEventListener('click',async()=>{await SB.auth.signOut();location.reload()});
+// منع تغيير قيم حقول الأرقام باستخدام عجلة الماوس، مع السماح بالتمرير العادي للصفحة.
+document.addEventListener("wheel", function (e) {
+  if (e.target instanceof HTMLInputElement && e.target.type === "number") {
+    e.preventDefault();
+  }
+}, { passive: false, capture: true });
+
 </script>
 </body>
 </html>
