@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>حساب المرتبات</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f6f8f9;--card:#fff;--ink:#17262f;--mute:#5d6f7a;--line:#d9e1e5;--acc:#0e6b66;--accbg:#e1f1ef;--warn:#9a5b00;--warnbg:#fdf0d8;--bad:#b3261e;--badbg:#fbe4e2;--ok:#1b6e3a;
+box-sizing:border-box;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a20;--card:#17252d;--ink:#e6eef1;--mute:#93a6b0;--line:#2a3d47;--acc:#4fc3b8;--accbg:#173a38;--warn:#f0b75a;--warnbg:#3a2c10;--bad:#ff8a80;--badbg:#401a17;--ok:#6fd093}}
+:root[data-theme="dark"]{--bg:#0f1a20;--card:#17252d;--ink:#e6eef1;--mute:#93a6b0;--line:#2a3d47;--acc:#4fc3b8;--accbg:#173a38;--warn:#f0b75a;--warnbg:#3a2c10;--bad:#ff8a80;--badbg:#401a17;--ok:#6fd093}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Cairo,Tahoma,Arial,sans-serif;font-size:15px;line-height:1.6}
+main{max-width:1400px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 18px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:34px 16px;text-align:center;background:var(--card)}
+.drop.over{border-color:var(--acc);background:var(--accbg)}
+button,.btn{font:inherit;cursor:pointer;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:8px;padding:8px 18px;font-weight:600}
+:root{--btnink:#fff}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn,:root:not([data-theme="light"]) button.pri{color:#0f1a20}}
+button.ghost{background:transparent;color:var(--acc)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.bar input,.bar select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.tabs button{border-radius:8px 8px 0 0}
+.tabs button.off{background:transparent;color:var(--acc)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:10px 0 14px}
+.sum div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.sum b{display:block;font-size:20px}
+.sum span{color:var(--mute);font-size:13px}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card);max-height:70vh}
+table{border-collapse:collapse;width:100%;min-width:1100px}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:var(--accbg);color:var(--ink);font-size:13px;z-index:1}
+td input{width:76px;font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+td.n{font-variant-numeric:tabular-nums}
+td.tot{font-weight:700}
+.tag{display:inline-block;font-size:12px;padding:0 8px;border-radius:99px;margin-inline-end:4px}
+.w{background:var(--warnbg);color:var(--warn)}.b{background:var(--badbg);color:var(--bad)}
+tr.diff td{background:var(--badbg)}
+.msg{padding:10px 14px;border-radius:8px;background:var(--badbg);color:var(--bad);margin:10px 0}
+.set{display:flex;gap:14px;flex-wrap:wrap;color:var(--mute);font-size:14px}
+.set input{width:70px}
+.hide{display:none}
+td a{color:var(--acc);font-weight:600}
+.cardx{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 16px;margin:12px 0;max-width:560px}
+.rw{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.rw:last-child{border-bottom:0}
+.rw input{width:130px;font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.rw b{font-variant-numeric:tabular-nums;text-align:left}
+#det h2{margin:6px 0 0}
+button:disabled{opacity:.4;cursor:default}
+select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.bar input[type=month]{width:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>حساب المرتبات</h1>
+<p class="sub">ارفع شيت الحضور اليومي وهي تملا ساعات وأيام وتأخيرات وغيابات كل موظف، أو ارفع شيت المرتبات الجاهز عشان تقارن. وبعدها تحسب المرتبات بنفس معادلات الشيت.</p>
+
+<div id="st" class="sub"></div>
+<button class="ghost hide" id="out" type="button">تسجيل خروج</button>
+<div id="login" class="cardx hide"><h2>تسجيل الدخول</h2>
+<div class="rw"><label for="em">الإيميل</label><input id="em" type="email" style="width:230px"></div>
+<div class="rw"><label for="pw">الباسورد</label><input id="pw" type="password" style="width:230px"></div>
+<button class="btn" id="lg" type="button">دخول</button><p id="lerr" class="sub"></p></div>
+<div id="drop" class="drop">
+  <p>اسحب ملف الإكسيل هنا أو اختاره من جهازك</p>
+  <button class="pri btn" id="pick" type="button">اختيار الملف</button>
+  <input id="file" type="file" accept=".xlsx,.xlsm,.xls" class="hide">
+  <button class="ghost hide" id="months0" type="button">فتح شهر محفوظ</button>
+</div>
+<div id="err" class="msg hide"></div>
+<div id="mp" class="cardx hide"></div>
+
+<section id="app" class="hide">
+  <div class="bar tabs" id="tabs"></div>
+  <div class="bar">
+    <input id="q" type="search" placeholder="بحث بالاسم أو الكود">
+    <select id="br"></select>
+    <button class="ghost" id="again" type="button">رفع شيت آخر</button>
+    <input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button>
+  </div>
+  <div class="set">
+    <label>المقسوم عليه (المساعدين) <input id="div" type="number" value="26"></label>
+    
+    <span>سعر الساعة وسعر التحويلة وسعر الأوردر لكل موظف بيتقروا من الشيت (الأوردر 20 لو مفيش)، وتقدر تعدلهم في الجدول أو في صفحة الموظف.</span>
+  </div>
+  <div class="set hide" id="attset"><label>حد التأخير بالدقايق <input id="thr" type="number" value="30"></label><label>أيام الإجازة الرسمية في الفترة <input id="hd" type="number" value="1"></label><label><input id="exc" type="checkbox" checked> استبعاد التأخيرات المعذورة</label></div>
+  <div class="sum" id="sum"></div>
+  <div class="wrap"><table id="tbl"></table></div>
+</section>
+<section id="det" class="hide"></section>
+</main>
+<script>
+// ضع هنا بيانات مشروع Supabase (اقرا README.md)
+const SUPABASE_URL='https://reubtwlfjbwqfdbolzgx.supabase.co',SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJldWJ0d2xmamJ3cWZkYm9semd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMjU0MDMsImV4cCI6MjEwODcwMTQwM30.qwawzY613Rf9xdbqk2Qqg2IHPgJYXN0GmxN9ViC4ZLQ';
+const $=id=>document.getElementById(id);
+const num=v=>{const x=parseFloat(v);return isFinite(x)?x:0};
+const fmt=x=>x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+let D={s:[],d:[]},cur='s',S={div:26,ord:20},MODE='pay';
+const LBL={s:'المساعدين',d:'المندوبين'};
+const COLS={
+ s:[['rate','قيمة الساعة'],['h','الساعات'],['days','أيام الحضور'],['abs','غياب بدون إذن'],['hol','إجازة رسمية'],['ot','الإضافي'],['late','التأخيرات'],['disc','خصم'],['allow','العدية'],['adv','السلف'],['sh','العجز'],['ins','تأمينات'],['bonus','حافز'],['pm','طريقة القبض']],
+ d:[['h','الساعات'],['days','أيام الحضور'],['abs','غياب بدون إذن'],['hol','إجازة رسمية'],['ot','الإضافي'],['late','التأخيرات'],['disc','خصم'],['hr','سعر الساعة'],['trips','التحويلات'],['tr','سعر التحويلة'],['orders','الأوردرات'],['or','سعر الأوردر'],['allow','العدية'],['adv','السلف'],['sh','العجز'],['ins','تأمينات'],['bonus','حافز'],['pm','طريقة القبض']]
+};
+function calc(o){
+  const net=o.h+o.ot-o.late-o.disc;
+  const sal=o.t==='s'?net/S.div*o.rate+o.allow:net*o.hr+o.trips*o.tr+o.orders*o.or+o.allow;
+  o.net=net;o.sal=sal;o.pay=sal-(o.adv+o.sh+o.ins);o.tot=o.pay+o.bonus;
+  o.diff=o.ref!=null&&Math.abs(o.tot-o.ref)>0.5;
+}
+function parse(ws,t){
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const H=(rows[0]||[]).map(h=>String(h==null?'':h).trim());
+  const ix=(...n)=>{for(const x of n){const i=H.indexOf(x);if(i>-1)return i}return -1};
+  const iN=ix('الموظف');
+  return rows.slice(1).filter(r=>r[iN]&&String(r[iN]).trim()!=='الموظف').map(r=>{
+    const v=(...n)=>{const i=ix(...n);return i<0?0:num(r[i])};
+    const s=(...n)=>{const i=ix(...n);return i<0||r[i]==null?'':String(r[i]).trim()};
+    const o={t,branch:s('الفرع'),name:s('الموظف'),code:s('كود الموظف'),h:v('عدد الساعات'),ot:v('الاضافي'),late:v('التاخيرات'),disc:v('خصم'),allow:v('العدية','عدية'),adv:v('السلف'),sh:v('العجز'),ins:v('تامينات'),bonus:v('حافز'),ref:v('الاجمالى'),days:v('عدد الايام'),abs:v('غيابات'),hol:v('اجازة')};
+    if(t==='s')o.rate=v('قيمة الساعه');
+    else{
+      const k=v('صافى الساعات'),L=v('المرتب الساعات'),M=v('التحويلات'),O=v('قيمة التحويلات');
+      const N=v('الاوردرات'),P=v('قيمة الاوردرات');o.trips=M;o.orders=N;o.or=N>0&&P?P/N:20;o.hr=k>0&&L?L/k:20;o.tr=M>0&&O?O/M:10;
+    }
+    return o;
+  });
+}
+function load(buf){
+  const wb=XLSX.read(buf,{type:'array'});D={s:[],d:[]};
+  MODE='pay';
+  for(const n of wb.SheetNames){
+    const h0=(XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1})[0]||[]).map(h=>String(h==null?'':h).trim());
+    if(h0.includes('Worked Hours')&&h0.includes('Late Duration')){parseAtt(wb.Sheets[n]);applyMasters();MODE='att'}
+  }
+  for(const n of wb.SheetNames){
+    const hd=(XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1})[0]||[]).map(h=>String(h==null?'':h).trim());
+    if(hd.includes('المرتب الساعات'))D.d=parse(wb.Sheets[n],'d');
+    else if(hd.includes('قيمة الساعه'))D.s=parse(wb.Sheets[n],'s');
+  }
+  if(!D.s.length&&!D.d.length)throw new Error('مش لاقي شيت حضور ولا شيت مرتبات. اتأكد إن العناوين في الصف الأول زي الملف الأصلي.');
+  cur=D.s.length?'s':'d';$('attset').classList.toggle('hide',MODE!=='att');
+  $('drop').classList.add('hide');$('app').classList.remove('hide');
+  render();
+}
+const mn=v=>{if(v==null||v==='')return null;if(typeof v==='number')return Math.round(v*1440);const m=String(v).match(/(\d+):(\d+)/);return m?+m[1]*60+ +m[2]:null};
+function parseAtt(ws){
+  const R=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const H=R[0].map(h=>String(h==null?'':h).trim()),ix=n=>H.indexOf(n),M=new Map();
+  for(const r of R.slice(1)){
+    const c=r[ix('Code')];if(c==null||c==='')continue;
+    const k=String(c).trim();let o=M.get(k);
+    if(!o){const ti=String(r[ix('Title')]||''),del=/^delivery/i.test(ti);
+      o={t:del?'d':'s',branch:String(r[ix('Location')]||'').trim(),name:String(r[ix('Full Name')]||'').trim(),code:k,rr:[],pm:'',h:0,days:0,abs:0,hol:0,late:0,ot:0,disc:0,allow:0,adv:0,sh:0,ins:0,bonus:0,ref:null};
+      if(del)Object.assign(o,{hr:20,tr:10,or:20,trips:0,orders:0});else o.rate=0;
+      M.set(k,o)}
+    o.rr.push({d:dt(r[ix('Date')]),w:mn(r[ix('Worked Hours')]),l:mn(r[ix('Late Duration')]),s:String(r[ix('Status')]||'')});
+  }
+  const L=[...M.values()];L.forEach(applyAtt);const mx=L.flatMap(o=>o.rr.map(r=>r.d)).filter(d=>/^\d{4}-\d\d/.test(d)).sort().pop();if(mx)$('mkey').value=mx.slice(0,7);
+  D.s=L.filter(o=>o.t==='s');D.d=L.filter(o=>o.t==='d');
+}
+function applyAtt(o){
+  const thr=num($('thr').value),hd=num($('hd').value),ex=$('exc').checked,pr=new Set(),ab=new Set(),ph=new Set();
+  let w=0,l=0;
+  for(const r of o.rr){
+    if(r.w!=null){w+=r.w;pr.add(r.d)}
+    if(r.l>thr&&!(ex&&/Excused/.test(r.s)))l+=r.l;
+    if(/Absent without permission/.test(r.s))ab.add(r.d);
+    if(/Public Holiday/.test(r.s))ph.add(r.d);
+  }
+  o.h=w/60;o.late=l/60;o.days=pr.size;o.abs=[...ab].filter(d=>!pr.has(d)).length;o.hol=Math.max(0,hd-ph.size);
+}
+['input','change'].forEach(ev=>['thr','hd','exc'].forEach(id=>$(id).addEventListener(ev,()=>{if(MODE==='att'){D.s.concat(D.d).forEach(applyAtt);draw()}})));
+function warns(o){
+  const w=[];
+  if(!o.branch||o.branch==='فارغ')w.push(['w','فرع ناقص']);
+  if(o.t==='s'&&!o.rate)w.push(['w','بدون قيمة ساعة']);
+  if(o.tot<0)w.push(['b','الصافي بالسالب']);
+  if(o.diff)w.push(['b','مختلف عن الشيت']);
+  return w;
+}
+function rows(){
+  const q=$('q').value.trim(),b=$('br').value;
+  D[cur].forEach(calc);
+  return D[cur].map((o,i)=>({o,i})).filter(({o})=>(!b||o.branch===b)&&(!q||o.name.includes(q)||o.code.includes(q)));
+}
+function render(){
+  $('tabs').innerHTML=['s','d'].filter(t=>D[t].length).map(t=>`<button type="button" class="${t===cur?'':'off'}" data-t="${t}">${LBL[t]} (${D[t].length})</button>`).join('');
+  const brs=[...new Set(D[cur].map(o=>o.branch||'(بدون فرع)'))];
+  const keep=$('br').value;
+  $('br').innerHTML='<option value="">كل الفروع</option>'+brs.map(b=>`<option>${b==='(بدون فرع)'?'':b}</option>`.replace('<option></option>','<option value="">كل الفروع</option>')).join('');
+  $('br').value=keep;
+  $('br').innerHTML=['<option value="">كل الفروع</option>',...[...new Set(D[cur].map(o=>o.branch).filter(Boolean))].map(b=>`<option>${b}</option>`)].join('');
+  $('br').value=keep;
+  draw();
+}
+function draw(){
+  const R=rows(),C=COLS[cur];
+  $('tbl').innerHTML='<thead><tr><th>الفرع</th><th>الموظف</th><th>الكود</th>'+C.map(c=>`<th>${c[1]}</th>`).join('')+'<th>المرتب</th><th>الصافي</th><th>الإجمالي</th><th>الشيت</th><th>تنبيه</th></tr></thead><tbody>'+
+  R.map(({o,i})=>`<tr id="r${i}" class="${o.diff?'diff':''}"><td>${o.branch||'—'}</td><td><a href="#" data-d="${i}">${o.name}</a></td><td>${o.code}</td>`+
+   C.map(([k])=>`<td>${fld(o,k,i)}</td>`).join('')+
+   `<td class="n" data-o="sal"></td><td class="n" data-o="pay"></td><td class="n tot" data-o="tot"></td><td class="n" data-o="ref"></td><td data-o="w"></td></tr>`).join('')+'</tbody>';
+  R.forEach(({o,i})=>fill(i));
+  summary(R);
+}
+function fill(i){
+  const o=D[cur][i],tr=$('r'+i);if(!tr)return;
+  calc(o);tr.className=o.diff?'diff':'';
+  const set=(k,t)=>tr.querySelector(`[data-o="${k}"]`).innerHTML=t;
+  set('sal',fmt(o.sal));set('pay',fmt(o.pay));set('tot',fmt(o.tot));set('ref',o.ref==null?'—':fmt(o.ref));
+  set('w',warns(o).map(([c,t])=>`<span class="tag ${c}">${t}</span>`).join(''));
+}
+function summary(R){
+  const L=R.map(r=>r.o);
+  const sum=k=>L.reduce((a,o)=>a+o[k],0);
+  const w=L.filter(o=>warns(o).length).length,d=L.filter(o=>o.diff).length;
+  $('sum').innerHTML=[['عدد الموظفين',L.length],['إجمالي المرتبات',fmt(sum('tot'))],['إجمالي السلف والعجز والتأمينات',fmt(sum('adv')+sum('sh')+sum('ins'))],['موظفين عليهم تنبيه',w],['مختلفين عن الشيت',d]]
+   .map(([a,b])=>`<div><b>${b}</b><span>${a}</span></div>`).join('');
+}
+$('tbl').addEventListener('input',e=>{
+  const t=e.target;if(!t.dataset.k)return;
+  setF(D[cur][+t.dataset.i],t.dataset.k,t.value);
+  fill(+t.dataset.i);summary(rows());
+});
+$('tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(t){cur=t;$('br').value='';render()}});
+$('q').addEventListener('input',draw);$('br').addEventListener('change',draw);
+$('div').addEventListener('input',e=>{S.div=num(e.target.value)||26;draw()});
+
+$('again').addEventListener('click',()=>{$('app').classList.add('hide');$('drop').classList.remove('hide');$('file').value=''});
+function go(f){
+  $('err').classList.add('hide');
+  const r=new FileReader();
+  r.onload=async()=>{await ready;try{load(new Uint8Array(r.result))}catch(x){$('err').textContent=x.message;$('err').classList.remove('hide')}};
+  r.readAsArrayBuffer(f);
+}
+$('pick').addEventListener('click',()=>$('file').click());
+$('file').addEventListener('change',e=>e.target.files[0]&&go(e.target.files[0]));
+const dz=$('drop');
+['dragover','dragenter'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.remove('over')}));
+dz.addEventListener('drop',e=>e.dataTransfer.files[0]&&go(e.dataTransfer.files[0]));
+let dl=[],dp=0;
+function openDet(i){dl=rows().map(r=>r.i);dp=dl.indexOf(i);if(dp<0){dl=[i];dp=0}$('app').classList.add('hide');$('det').classList.remove('hide');renderDet();window.scrollTo(0,0)}
+function lines(o){const f=fmt;const a=[['صافي الساعات',`${f(o.h)} + ${f(o.ot)} − ${f(o.late)} − ${f(o.disc)} = ${f(o.net)}`]];
+ if(o.t==='s')a.push(['المرتب',`${f(o.net)} ÷ ${S.div} × ${f(o.rate)} + ${f(o.allow)} = ${f(o.sal)}`]);
+ else a.push(['مرتب الساعات',`${f(o.net)} × ${f(o.hr)} = ${f(o.net*o.hr)}`],['التحويلات',`${o.trips} × ${f(o.tr)} = ${f(o.trips*o.tr)}`],['الأوردرات',`${o.orders} × ${f(o.or)} = ${f(o.orders*o.or)}`],['المرتب',`${f(o.sal)} (شامل العدية ${f(o.allow)})`]);
+ a.push(['الخصومات',`${f(o.adv)} + ${f(o.sh)} + ${f(o.ins)} = ${f(o.adv+o.sh+o.ins)}`],['صافي المرتب',f(o.pay)],['الإجمالي بعد الحافز',f(o.tot)],['الإجمالي في الشيت',(o.ref==null?'—':f(o.ref))+(o.diff?' (مختلف)':'')]);return a}
+function brk(){const o=D[cur][dl[dp]];calc(o);$('brk').innerHTML=lines(o).map(([a,b])=>`<div class="rw"><span>${a}</span><b>${b}</b></div>`).join('')+warns(o).map(([c,t])=>`<span class="tag ${c}">${t}</span>`).join('')}
+function renderDet(){const o=D[cur][dl[dp]];$('det').innerHTML=`<div class="bar"><button class="ghost" type="button" data-n="back">رجوع للجدول</button><button class="ghost" type="button" data-n="-1" ${dp?'':'disabled'}>الموظف السابق</button><button class="ghost" type="button" data-n="1" ${dp<dl.length-1?'':'disabled'}>الموظف التالي</button><span>${dp+1} من ${dl.length}</span></div><h2>${o.name}</h2><p class="sub">${o.branch||'بدون فرع'} - كود ${o.code||'—'}</p><div class="cardx">`+COLS[cur].map(([k,l])=>`<div class="rw"><label for="f${k}">${l}</label>${fld(o,k,'')}</div>`).join('')+`</div><div class="cardx" id="brk"></div>`;brk()}
+$('det').addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;setF(D[cur][dl[dp]],k,e.target.value);brk()});
+$('det').addEventListener('click',e=>{const n=e.target.dataset.n;if(!n)return;if(n==='back'){$('det').classList.add('hide');$('app').classList.remove('hide');draw();return}dp+=+n;renderDet()});
+$('tbl').addEventListener('click',e=>{const d=e.target.dataset.d;if(d!=null){e.preventDefault();openDet(+d)}});
+const PM=['','Dopay','Paymint','Instapay','Cash'],MK=new Set(['rate','hr','tr','or','pm']);
+const F=['t','code','name','branch','pm','h','days','abs','hol','late','ot','disc','allow','adv','sh','ins','bonus','rate','hr','tr','or','trips','orders','ref','sal','pay','tot'];
+let DB=null,CAN=true,MAST={},tm={},ow='';
+const dt=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v);
+const flash=t=>{$('st').textContent=t};
+function fld(o,k,i){const a=i===''?` id="f${k}"`:` data-i="${i}"`;
+ if(k==='pm')return `<select data-k="pm"${a}>${PM.map(p=>`<option value="${p}"${o.pm===p?' selected':''}>${p||'—'}</option>`).join('')}</select>`;
+ return `<input type="number" step="any" value="${+o[k].toFixed(4)}" data-k="${k}"${a} aria-label="${k}">`}
+function mast(o){const m={t:o.t,code:o.code,name:o.name,branch:o.branch,pm:o.pm||''};if(o.t==='s')m.rate=o.rate;else{m.hr=o.hr;m.tr=o.tr;m.or=o.or}return m}
+function applyMasters(){for(const o of D.s.concat(D.d)){const m=MAST[o.code];if(m&&m.t===o.t)for(const k of MK)if(m[k]!=null)o[k]=m[k]}}
+function setF(o,k,v){o[k]=k==='pm'?v:num(v);if(MK.has(k)&&MODE!=='pay'&&DB&&CAN){clearTimeout(tm[o.code]);tm[o.code]=setTimeout(()=>save1(o),800)}}
+const fail=e=>flash('فشل ('+(e.message||e.code)+')');
+async function save1(o){const m=mast(o);const {error}=await SB.from('masters').upsert({code:o.code,data:m,updated_at:new Date().toISOString()});if(error)return fail(error);MAST[o.code]=m;flash('اتحفظ: '+o.name)}
+async function saveAll(){const rows=[],emps={};for(const o of D.s.concat(D.d)){if(o.t==='s'&&!o.rate&&!o.pm)continue;const m=mast(o);emps[o.code]=m;rows.push({code:o.code,data:m,updated_at:new Date().toISOString()})}const {error}=await SB.from('masters').upsert(rows);if(error)return fail(error);Object.assign(MAST,emps);flash('اتحفظ '+rows.length+' موظف')}
+async function saveMonth(){const key=$('mkey').value;if(!key)return flash('اختار الشهر الأول');
+ if(ow!==key){const {data,error}=await SB.from('months').select('key').eq('key',key);if(error)return fail(error);if(data.length){ow=key;$('saveM').textContent='تأكيد استبدال الشهر';return flash('شهر '+key+' محفوظ قبل كده. اضغط تاني لو عاوز تستبدله.')}}
+ const all=D.s.concat(D.d);all.forEach(calc);
+ const rows=all.map(o=>{const r={};for(const k of F)if(o[k]!==undefined)r[k]=o[k];return r});
+ const {error}=await SB.from('months').upsert({key,n:all.length,total:all.reduce((a,o)=>a+o.tot,0),data:{div:S.div,rows},saved_at:new Date().toISOString()});
+ if(error)return fail(error);ow='';$('saveM').textContent='حفظ الشهر';flash('اتحفظ شهر '+key)}
+async function showMonths(){const p=$('mp');if(!p.classList.contains('hide')){p.classList.add('hide');return}
+ p.classList.remove('hide');p.textContent='جاري التحميل...';
+ const {data,error}=await SB.from('months').select('key,n,total').order('key',{ascending:false});
+ if(error){p.textContent='التحميل فشل';return}
+ p.innerHTML=data.length?data.map(x=>`<div class="rw"><span>${x.key} - ${x.n} موظف - الإجمالي ${fmt(+x.total||0)}</span><button class="ghost" data-open="${x.key}" type="button">فتح</button></div>`).join(''):'مفيش شهور محفوظة لسه.'}
+async function openMonth(key){const {data,error}=await SB.from('months').select('data').eq('key',key).single();if(error)return fail(error);const x=data.data;
+ const fix=r=>{for(const [k] of COLS[r.t])if(k!=='pm'&&typeof r[k]!=='number')r[k]=0;r.pm=r.pm||'';return r};
+ const L=x.rows.map(r=>fix({...r}));D={s:L.filter(o=>o.t==='s'),d:L.filter(o=>o.t==='d')};
+ MODE='saved';if(x.div){S.div=x.div;$('div').value=x.div}$('mkey').value=key;cur=D.s.length?'s':'d';
+ $('attset').classList.add('hide');$('mp').classList.add('hide');$('drop').classList.add('hide');$('app').classList.remove('hide');render();flash('مفتوح شهر '+key)}
+$('saveM').addEventListener('click',saveMonth);$('saveP').addEventListener('click',saveAll);
+$('months').addEventListener('click',showMonths);$('months0').addEventListener('click',showMonths);
+$('mp').addEventListener('click',e=>{const k=e.target.dataset.open;if(k)openMonth(k)});
+$('mkey').addEventListener('input',()=>{ow='';$('saveM').textContent='حفظ الشهر'});
+const SB=(window.supabase&&/^https?:/.test(SUPABASE_URL))?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+async function afterLogin(){const {data,error}=await SB.from('masters').select('code,data');if(error){flash('القراءة فشلت: '+error.message);return}
+ MAST=Object.fromEntries(data.map(r=>[r.code,r.data]));DB=true;
+ $('login').classList.add('hide');$('drop').classList.remove('hide');$('out').classList.remove('hide');
+ ['months','months0','saveM','saveP'].forEach(i=>$(i).classList.remove('hide'));flash('متصل بقاعدة البيانات')}
+const ready=(async()=>{if(!SB){flash('لسه لازم تحط رابط ومفتاح Supabase في أول السكريبت (اقرا README.md). لحد وقتها الحساب شغال بدون حفظ.');return}
+ $('drop').classList.add('hide');const {data}=await SB.auth.getSession();if(data.session)await afterLogin();else $('login').classList.remove('hide')})();
+$('lg').addEventListener('click',async()=>{const {error}=await SB.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error){$('lerr').textContent='الإيميل أو الباسورد غلط';return}$('lerr').textContent='';await afterLogin()});
+$('out').addEventListener('click',async()=>{await SB.auth.signOut();location.reload()});
+</script>
+</body>
+</html>
