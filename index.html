@@ -193,15 +193,15 @@ tr.diff td{background:var(--badbg)}
   <div class="bar">
     <input id="q" type="search" placeholder="بحث بالاسم أو الكود">
     <select id="br"></select>
+    <select id="alertFilter" aria-label="فلتر التنبيهات"><option value="">كل الموظفين</option><option value="alerts">اللي عليهم تنبيه</option><option value="noalerts">من غير تنبيه</option></select>
+    <select id="pmFilter" aria-label="فلتر طريقة القبض"><option value="">كل طرق القبض</option></select>
     <button class="ghost" id="again" type="button">رفع شيت آخر</button><button class="ghost" id="ordersImportBtn" type="button">استيراد عدد الأوردرات</button><input id="ordersImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="tripsImportBtn" type="button">استيراد عدد التحويلات</button><input id="tripsImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="penaltiesImportBtn" type="button">استيراد الجزاءات</button><input id="penaltiesImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide">
     <label for="payrollMonthSelect">Payroll المفتوح</label><select id="payrollMonthSelect" aria-label="اختيار Payroll"><option value="">اختار شهر محفوظ</option></select><input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button><button class="ghost hide" id="exportAll" type="button">تصدير كل البيانات Excel</button>
   </div>
-  <div class="set">
+  <div class="set hide">
     <label>المقسوم عليه (المساعدين) <input id="div" type="number" value="26"></label>
-    
-    <span>سعر الساعة وسعر التحويلة وسعر الأوردر لكل موظف بيتقروا من الشيت (الأوردر 20 لو مفيش)، وتقدر تعدلهم في الجدول أو في صفحة الموظف.</span>
   </div>
-  <div class="set hide" id="attset"><label>حد التأخير بالدقايق <input id="thr" type="number" value="30"></label><label>أيام الإجازة الرسمية في الفترة <input id="hd" type="number" value="1"></label><label><input id="exc" type="checkbox" checked> استبعاد التأخيرات المعذورة</label></div>
+  <div class="set" id="attset"><label>حد التأخير بالدقايق <input id="thr" type="number" value="30"></label><label>أيام الإجازة الرسمية في الفترة <input id="hd" type="number" value="1"></label><label><input id="exc" type="checkbox" checked> استبعاد التأخيرات المعذورة</label></div>
   <div class="sum" id="sum"></div>
   <div class="wrap"><table id="tbl"></table></div>
 </section>
@@ -234,7 +234,7 @@ function restoreDraft(){
     const x=JSON.parse(raw);if(!x||x.version!==1||!x.D||!Array.isArray(x.D.s)||!Array.isArray(x.D.d)||(!x.D.s.length&&!x.D.d.length))return false;
     restoringDraft=true;D=x.D;cur=x.cur==='d'&&D.d.length?'d':(D.s.length?'s':'d');S={...S,...(x.S||{})};MODE=x.MODE||'pay';workflowStage=Number.isInteger(x.workflowStage)?x.workflowStage:4;activePayrollMonth=x.activePayrollMonth||x.mkey||'';
     if(x.mkey)$('mkey').value=x.mkey;if(x.thr!=null)$('thr').value=x.thr;if(x.hd!=null)$('hd').value=x.hd;if(x.exc!=null)$('exc').checked=!!x.exc;
-    $('attset').classList.toggle('hide',MODE!=='att');$('drop').classList.add('hide');$('app').classList.remove('hide');$('det').classList.add('hide');$('div').value=S.div||26;render();
+    $('attset').classList.remove('hide');$('drop').classList.add('hide');$('app').classList.remove('hide');$('det').classList.add('hide');$('div').value=S.div||26;render();
     const when=x.savedAt?new Date(x.savedAt).toLocaleString('ar-EG'):'وقت غير معروف';flash('تم استرجاع المسودة تلقائيًا — آخر حفظ: '+when);return true;
   }catch(e){return false}finally{restoringDraft=false}
 }
@@ -282,7 +282,7 @@ function load(buf){
   }
   if(!D.s.length&&!D.d.length)throw new Error('مش لاقي شيت حضور ولا شيت مرتبات. اتأكد إن العناوين في الصف الأول زي الملف الأصلي.');
   if(activePayrollMonth)$('mkey').value=activePayrollMonth;
-  cur=D.s.length?'s':'d';$('attset').classList.toggle('hide',MODE!=='att');
+  cur=D.s.length?'s':'d';$('attset').classList.remove('hide');
   $('drop').classList.add('hide');$('app').classList.remove('hide');
   render();workflowStage=1;updateWorkflowUI();const mainIssues=D.s.concat(D.d).map(o=>{calc(o);return {o,w:warns(o)}}).filter(x=>x.w.length);showImportReview('نتيجة فحص شيت الداتا الكبير', [`عدد المساعدين: ${D.s.length}`,`عدد المندوبين: ${D.d.length}`,`موظفون عليهم ملاحظات: ${mainIssues.length}`,...mainIssues.slice(0,100).map(x=>`${x.o.code||'بدون كود'} | ${x.o.name} | ${x.w.map(w=>w[1]).join('، ')}`),...(mainIssues.length>100?[`... و${mainIssues.length-100} موظف آخر`]:[])].join('\n'),mainIssues.length?'bad':'ok');scheduleDraft();
 }
@@ -325,7 +325,8 @@ function warns(o){
 function rows(){
   const q=$('q').value.trim(),b=$('br').value;
   D[cur].forEach(calc);
-  return D[cur].map((o,i)=>({o,i})).filter(({o})=>(!b||o.branch===b)&&(!q||o.name.includes(q)||o.code.includes(q)));
+  const af=$('alertFilter')?.value||'',pm=$('pmFilter')?.value||'';
+  return D[cur].map((o,i)=>({o,i})).filter(({o})=>(!b||o.branch===b)&&(!q||String(o.name||'').includes(q)||String(o.code||'').includes(q))&&(!af||(af==='alerts'?warns(o).length>0:warns(o).length===0))&&(!pm||String(o.pm||'')===pm));
 }
 function render(){
   $('tabs').innerHTML=['s','d'].filter(t=>D[t].length).map(t=>`<button type="button" class="${t===cur?'':'off'}" data-t="${t}">${LBL[t]} (${D[t].length})</button>`).join('');
@@ -335,6 +336,7 @@ function render(){
   $('br').value=keep;
   $('br').innerHTML=['<option value="">كل الفروع</option>',...[...new Set(D[cur].map(o=>o.branch).filter(Boolean))].map(b=>`<option>${b}</option>`)].join('');
   $('br').value=keep;
+  const pkeep=$('pmFilter').value;const pms=[...new Set(D[cur].map(o=>String(o.pm||'').trim()).filter(Boolean))].sort();$('pmFilter').innerHTML='<option value="">كل طرق القبض</option>'+pms.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');$('pmFilter').value=pms.includes(pkeep)?pkeep:'';
   draw();
 }
 function draw(){
@@ -367,7 +369,7 @@ function handleTableEdit(e){
 }
 $('tbl').addEventListener('input',handleTableEdit);$('tbl').addEventListener('change',handleTableEdit);
 $('tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(t){cur=t;$('br').value='';render();scheduleDraft()}});
-$('q').addEventListener('input',draw);$('br').addEventListener('change',draw);
+$('q').addEventListener('input',draw);$('br').addEventListener('change',draw);$('alertFilter').addEventListener('change',draw);$('pmFilter').addEventListener('change',draw);
 $('div').addEventListener('input',e=>{S.div=num(e.target.value)||26;draw();scheduleDraft()});
 
 $('again').addEventListener('click',()=>{$('app').classList.add('hide');$('drop').classList.remove('hide');$('uploadSetup').classList.remove('hide');$('payrollSetup').classList.add('hide');$('file').value='';updateWorkflowUI();});
@@ -500,12 +502,13 @@ function setF(o,k,v){o[k]=(k==='pm'||k==='branch')?v:num(v);scheduleDraft();if(M
 const fail=e=>flash('فشل ('+(e.message||e.code)+')');
 async function save1(o){const m=mast(o);const {error}=await SB.from('masters').upsert({code:o.code,data:m,updated_at:new Date().toISOString()});if(error)return fail(error);MAST[o.code]=m;flash('اتحفظ: '+o.name)}
 async function saveAll(){const rows=[],emps={};for(const o of D.s.concat(D.d)){if(o.t==='s'&&!o.rate&&!o.pm&&!o.ins)continue;const m=mast(o);emps[o.code]=m;rows.push({code:o.code,data:m,updated_at:new Date().toISOString()})}const {error}=await SB.from('masters').upsert(rows);if(error)return fail(error);Object.assign(MAST,emps);flash('اتحفظ '+rows.length+' موظف')}
-async function saveMonth(){const key=$('mkey').value;if(!key)return flash('اختار الشهر الأول');
- if(ow!==key){const {data,error}=await SB.from('months').select('key').eq('key',key);if(error)return fail(error);if(data.length){ow=key;$('saveM').textContent='تأكيد استبدال الشهر';return flash('شهر '+key+' محفوظ قبل كده. اضغط تاني لو عاوز تستبدله.')}}
+async function saveMonth(){
+ const key=$('mkey').value;if(!key)return flash('اختار الشهر الأول');
  const all=D.s.concat(D.d);all.forEach(calc);
  const rows=all.map(o=>{const r={};for(const k of F)if(o[k]!==undefined)r[k]=o[k];return r});
- const {error}=await SB.from('months').upsert({key,n:all.length,total:all.reduce((a,o)=>a+o.tot,0),data:{div:S.div,rows},saved_at:new Date().toISOString()});
- if(error)return fail(error);ow='';$('saveM').textContent='حفظ الشهر';saveDraftNow();flash('اتحفظ شهر '+key)}
+ const {error}=await SB.from('months').upsert({key,n:all.length,total:all.reduce((a,o)=>a+o.tot,0),data:{div:S.div,rows},saved_at:new Date().toISOString()},{onConflict:'key'});
+ if(error)return fail(error);ow='';$('saveM').textContent='حفظ الشهر';saveDraftNow();flash('اتحفظت تعديلات شهر '+key+' مباشرةً');await loadPayrollMonthOptions();
+}
 const EXPORT_LABELS={t:'النوع',code:'الكود',name:'الموظف',branch:'الفرع',pm:'طريقة القبض',ins:'التأمينات',rate:'قيمة الساعة',hr:'سعر الساعة',tr:'سعر التحويلة',or:'سعر الأوردر',h:'الساعات',days:'أيام الحضور',abs:'غياب بدون إذن',hol:'إجازة رسمية',late:'التأخيرات',ot:'الإضافي',penalties:'الجزاءات (أيام)',disc:'إجمالي الخصم',allow:'العدية',adv:'السلف',sh:'العجز',bonus:'الحافز',avg:'متوسط الساعات',net:'صافي الساعات',trips:'التحويلات',orders:'الأوردرات',ref:'الإجمالي في الشيت',sal:'المرتب',pay:'صافي المرتب',tot:'الإجمالي',month:'الشهر',div:'المقسوم عليه',saved_at:'تاريخ الحفظ'};
 function exportRows(rows,extra={}){return rows.map(o=>{const r={};for(const k of F)if(o[k]!==undefined)r[EXPORT_LABELS[k]||k]=o[k];for(const [k,v] of Object.entries(extra))r[EXPORT_LABELS[k]||k]=v;return r})}
 async function exportAllData(){
@@ -786,7 +789,7 @@ async function openMonth(key){const {data,error}=await SB.from('months').select(
  const fix=r=>{for(const [k] of COLS[r.t])if(k!=='pm'&&typeof r[k]!=='number')r[k]=0;r.pm=r.pm||'';return r};
  const L=x.rows.map(r=>fix({...r}));D={s:L.filter(o=>o.t==='s'),d:L.filter(o=>o.t==='d')};
  MODE='saved';workflowStage=4;activePayrollMonth=key;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI();if(x.div){S.div=x.div;$('div').value=x.div}$('mkey').value=key;await loadPayrollMonthOptions();cur=D.s.length?'s':'d';
- $('attset').classList.add('hide');$('mp').classList.add('hide');$('drop').classList.add('hide');$('app').classList.remove('hide');render();scheduleDraft();flash('مفتوح شهر '+key)}
+ $('attset').classList.remove('hide');$('mp').classList.add('hide');$('drop').classList.add('hide');$('app').classList.remove('hide');render();scheduleDraft();flash('مفتوح شهر '+key)}
 $('saveM').addEventListener('click',saveMonth);$('saveP').addEventListener('click',saveAll);
 $('months').addEventListener('click',showMonths);$('months0').addEventListener('click',showMonths);
 $('mp').addEventListener('click',e=>{const k=e.target.dataset.open;if(k)openMonth(k)});
