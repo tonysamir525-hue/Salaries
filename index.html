@@ -377,13 +377,19 @@ function monthPeriod(key){
 function updatePeriodLabel(){const key=$('newMonth').value;$('periodLabel').textContent=monthPeriod(key)}
 function updateWorkflowUI(){
   const names=WORKFLOW_NAMES;
-  $('workflowSteps').innerHTML=names.map((n,i)=>`<span class="tag ${i<workflowStage?'ok':i===workflowStage?'w':''}" style="padding:5px 10px;border:1px solid var(--line)">${i<workflowStage?'✓ ':i===workflowStage?'▶ ':''}${i+1}. ${n}</span>`).join('');
+  $('workflowSteps').innerHTML=names.map((n,i)=>`<button type="button" class="tag workflow-step ${i<workflowStage?'ok':i===workflowStage?'w':''}" data-stage="${i}" aria-current="${i===workflowStage?'step':'false'}" style="padding:7px 12px;border:1px solid var(--line);cursor:pointer;background:${i===workflowStage?'var(--soft)':'var(--card)'};color:var(--text)">${i<workflowStage?'✓ ':i===workflowStage?'▶ ':''}${i+1}. ${n}</button>`).join('');
+  $('workflowSteps').querySelectorAll('[data-stage]').forEach(b=>b.addEventListener('click',()=>{
+    workflowStage=Number(b.dataset.stage);updateWorkflowUI();
+    $('importReview').classList.remove('hide');
+    $('importReview').scrollIntoView({behavior:'smooth',block:'nearest'});
+    $('pick').focus({preventScroll:true});
+  }));
   const title=workflowStage>=4?'اكتملت خطوات الاستيراد':`الخطوة ${workflowStage+1}: رفع ${names[workflowStage]}`;
   $('uploadTitle').textContent=title;$('pick').textContent=workflowStage===0?'اختيار شيت الداتا الكبير':`اختيار ${names[workflowStage]}`;
   $('pick').disabled=workflowStage>=4;
   const next=$('nextStepBtn');
   next.classList.toggle('hide',workflowStage<1||workflowStage>=4);
-  next.textContent=workflowStage===1?'التالي: استيراد شيت الجزاءات':workflowStage===2?'التالي: استيراد شيت الأوردرات':workflowStage===3?'التالي: استيراد شيت التحويلات':'الانتقال للشيت التالي';
+  next.textContent=workflowStage===1?'رفع شيت الجزاءات':workflowStage===2?'رفع شيت الأوردرات':workflowStage===3?'رفع شيت التحويلات':'الانتقال للشيت التالي';
   $('uploadPeriod').textContent=monthPeriod(activePayrollMonth);
 }
 $('newMonth').value=new Date().toISOString().slice(0,7);updatePeriodLabel();
@@ -398,7 +404,7 @@ $('startPayroll').addEventListener('click',()=>{
 });
 $('resumeDraft').addEventListener('click',()=>{if(restoreDraft()){activePayrollMonth=$('mkey').value||activePayrollMonth;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI()}else flash('مفيش مسودة سابقة قابلة للاستكمال.')});
 $('pick').addEventListener('click',()=>{if(workflowStage===0)$('file').click();else if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();else flash('اكتملت خطوات الاستيراد. تقدر تحفظ الشهر الآن.');});
-$('nextStepBtn').addEventListener('click',()=>{if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();});
+$('nextStepBtn').addEventListener('click',()=>{if(workflowStage===0)$('file').click();else if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();});
 $('file').addEventListener('change',e=>e.target.files[0]&&go(e.target.files[0]));
 const dz=$('drop');
 ['dragover','dragenter'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('over')}));
