@@ -166,7 +166,7 @@ tr.diff td{background:var(--badbg)}
   <div class="bar">
     <input id="q" type="search" placeholder="بحث بالاسم أو الكود">
     <select id="br"></select>
-    <button class="ghost" id="again" type="button">رفع شيت آخر</button><button class="ghost" id="ordersImportBtn" type="button">استيراد عدد الأوردرات</button><input id="ordersImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide">
+    <button class="ghost" id="again" type="button">رفع شيت آخر</button><button class="ghost" id="ordersImportBtn" type="button">استيراد عدد الأوردرات</button><input id="ordersImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="tripsImportBtn" type="button">استيراد عدد التحويلات</button><input id="tripsImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="penaltiesImportBtn" type="button">استيراد الجزاءات</button><input id="penaltiesImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide">
     <input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button><button class="ghost hide" id="exportAll" type="button">تصدير كل البيانات Excel</button>
   </div>
   <div class="set">
@@ -213,8 +213,8 @@ window.addEventListener('pagehide',saveDraftNow);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveDraftNow()});
 const LBL={s:'المساعدين',d:'المندوبين'};
 const COLS={
- s:[['rate','قيمة الساعة'],['h','الساعات'],['days','أيام الحضور'],['abs','غياب بدون إذن'],['hol','إجازة رسمية'],['ot','الإضافي'],['late','التأخيرات'],['disc','خصم'],['allow','العدية'],['adv','السلف'],['sh','العجز'],['ins','تأمينات'],['bonus','حافز'],['pm','طريقة القبض']],
- d:[['h','الساعات'],['days','أيام الحضور'],['abs','غياب بدون إذن'],['hol','إجازة رسمية'],['ot','الإضافي'],['late','التأخيرات'],['disc','خصم'],['hr','سعر الساعة'],['trips','التحويلات'],['tr','سعر التحويلة'],['orders','الأوردرات'],['or','سعر الأوردر'],['allow','العدية'],['adv','السلف'],['sh','العجز'],['ins','تأمينات'],['bonus','حافز'],['pm','طريقة القبض']]
+ s:[['rate','قيمة الساعة'],['h','الساعات'],['days','أيام الحضور'],['abs','غياب بدون إذن'],['hol','إجازة رسمية'],['ot','الإضافي'],['late','التأخيرات'],['penalties','الجزاءات'],['disc','إجمالي الخصم'],['allow','العدية'],['adv','السلف'],['sh','العجز'],['ins','تأمينات'],['bonus','حافز'],['pm','طريقة القبض']],
+ d:[['h','الساعات'],['days','أيام الحضور'],['abs','غياب بدون إذن'],['hol','إجازة رسمية'],['ot','الإضافي'],['late','التأخيرات'],['penalties','الجزاءات'],['disc','إجمالي الخصم'],['hr','سعر الساعة'],['trips','التحويلات'],['tr','سعر التحويلة'],['orders','الأوردرات'],['or','سعر الأوردر'],['allow','العدية'],['adv','السلف'],['sh','العجز'],['ins','تأمينات'],['bonus','حافز'],['pm','طريقة القبض']]
 };
 function calc(o){
   const net=o.h+o.ot-o.late-o.disc;
@@ -230,7 +230,7 @@ function parse(ws,t){
   return rows.slice(1).filter(r=>r[iN]&&String(r[iN]).trim()!=='الموظف').map(r=>{
     const v=(...n)=>{const i=ix(...n);return i<0?0:num(r[i])};
     const s=(...n)=>{const i=ix(...n);return i<0||r[i]==null?'':String(r[i]).trim()};
-    const o={t,branch:s('الفرع'),name:s('الموظف'),code:s('كود الموظف'),h:v('عدد الساعات'),ot:v('الاضافي'),late:v('التاخيرات'),disc:v('خصم'),allow:v('العدية','عدية'),adv:v('السلف'),sh:v('العجز'),ins:v('تامينات'),bonus:v('حافز'),ref:v('الاجمالى'),days:v('عدد الايام'),abs:v('غيابات'),hol:v('اجازة')};
+    const o={t,branch:s('الفرع'),name:s('الموظف'),code:s('كود الموظف'),h:v('عدد الساعات'),ot:v('الاضافي'),late:v('التاخيرات'),disc:v('خصم'),penalties:0,allow:v('العدية','عدية'),adv:v('السلف'),sh:v('العجز'),ins:v('تامينات'),bonus:v('حافز'),ref:v('الاجمالى'),days:v('عدد الايام'),abs:v('غيابات'),hol:v('اجازة')};
     if(t==='s')o.rate=v('قيمة الساعه');
     else{
       const k=v('صافى الساعات'),L=v('المرتب الساعات'),M=v('التحويلات'),O=v('قيمة التحويلات');
@@ -264,7 +264,7 @@ function parseAtt(ws){
     const c=r[ix('Code')];if(c==null||c==='')continue;
     const k=String(c).trim();let o=M.get(k);
     if(!o){const ti=String(r[ix('Title')]||''),del=/^delivery/i.test(ti);
-      o={t:del?'d':'s',branch:String(r[ix('Location')]||'').trim(),name:String(r[ix('Full Name')]||'').trim(),code:k,rr:[],pm:'',h:0,days:0,abs:0,hol:0,late:0,ot:0,disc:0,allow:0,adv:0,sh:0,ins:0,bonus:0,ref:null};
+      o={t:del?'d':'s',branch:String(r[ix('Location')]||'').trim(),name:String(r[ix('Full Name')]||'').trim(),code:k,rr:[],pm:'',h:0,days:0,abs:0,hol:0,late:0,ot:0,disc:0,penalties:0,allow:0,adv:0,sh:0,ins:0,bonus:0,ref:null};
       if(del)Object.assign(o,{hr:20,tr:10,or:20,trips:0,orders:0});else o.rate=0;
       M.set(k,o)}
     o.rr.push({d:dt(r[ix('Date')]),w:mn(r[ix('Worked Hours')]),l:mn(r[ix('Late Duration')]),s:String(r[ix('Status')]||'')});
@@ -376,13 +376,13 @@ $('det').addEventListener('drop',e=>{const row=e.target.closest('.field-row');if
 $('det').addEventListener('dragend',()=>{if(draggedField)draggedField.classList.remove('dragging');draggedField=null;$('det').querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});
 $('tbl').addEventListener('click',e=>{const d=e.target.dataset.d;if(d!=null){e.preventDefault();openDet(+d)}});
 const PM=['','Dopay','Paymint','Instapay','Cash'],MK=new Set(['branch','rate','hr','tr','or','pm','ins']);
-const F=['t','code','name','branch','pm','h','days','abs','hol','late','ot','disc','allow','adv','sh','ins','bonus','rate','hr','tr','or','trips','orders','ref','sal','pay','tot'];
+const F=['t','code','name','branch','pm','h','days','abs','hol','late','ot','penalties','disc','allow','adv','sh','ins','bonus','rate','hr','tr','or','trips','orders','ref','sal','pay','tot'];
 let DB=null,CAN=true,MAST={},tm={},ow='';
 const dt=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v);
 const flash=t=>{$('st').textContent=t};
 const SP={
-s:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['rate','قيمة الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['disc','خصم','e2'],['net','صافى الساعات','r2'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']],
-d:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['hr','سعر الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['disc','خصم','e2'],['net','صافى الساعات','r2'],['trips','التحويلات','e0'],['tr','سعر التحويلة','e0'],['orders','الأوردرات','e0'],['or','سعر الأوردر','e0'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']]
+s:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['rate','قيمة الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['penalties','الجزاءات','r0'],['disc','إجمالي الخصم','e2'],['net','صافى الساعات','r2'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']],
+d:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['hr','سعر الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['penalties','الجزاءات','r0'],['disc','إجمالي الخصم','e2'],['net','صافى الساعات','r2'],['trips','التحويلات','e0'],['tr','سعر التحويلة','e0'],['orders','الأوردرات','e0'],['or','سعر الأوردر','e0'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']]
 };
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 function branchOptions(o){
@@ -410,7 +410,7 @@ async function saveMonth(){const key=$('mkey').value;if(!key)return flash('اخ�
  const rows=all.map(o=>{const r={};for(const k of F)if(o[k]!==undefined)r[k]=o[k];return r});
  const {error}=await SB.from('months').upsert({key,n:all.length,total:all.reduce((a,o)=>a+o.tot,0),data:{div:S.div,rows},saved_at:new Date().toISOString()});
  if(error)return fail(error);ow='';$('saveM').textContent='حفظ الشهر';saveDraftNow();flash('اتحفظ شهر '+key)}
-const EXPORT_LABELS={t:'النوع',code:'الكود',name:'الموظف',branch:'الفرع',pm:'طريقة القبض',ins:'التأمينات',rate:'قيمة الساعة',hr:'سعر الساعة',tr:'سعر التحويلة',or:'سعر الأوردر',h:'الساعات',days:'أيام الحضور',abs:'غياب بدون إذن',hol:'إجازة رسمية',late:'التأخيرات',ot:'الإضافي',disc:'الخصم',allow:'العدية',adv:'السلف',sh:'العجز',bonus:'الحافز',avg:'متوسط الساعات',net:'صافي الساعات',trips:'التحويلات',orders:'الأوردرات',ref:'الإجمالي في الشيت',sal:'المرتب',pay:'صافي المرتب',tot:'الإجمالي',month:'الشهر',div:'المقسوم عليه',saved_at:'تاريخ الحفظ'};
+const EXPORT_LABELS={t:'النوع',code:'الكود',name:'الموظف',branch:'الفرع',pm:'طريقة القبض',ins:'التأمينات',rate:'قيمة الساعة',hr:'سعر الساعة',tr:'سعر التحويلة',or:'سعر الأوردر',h:'الساعات',days:'أيام الحضور',abs:'غياب بدون إذن',hol:'إجازة رسمية',late:'التأخيرات',ot:'الإضافي',penalties:'الجزاءات (أيام)',disc:'إجمالي الخصم',allow:'العدية',adv:'السلف',sh:'العجز',bonus:'الحافز',avg:'متوسط الساعات',net:'صافي الساعات',trips:'التحويلات',orders:'الأوردرات',ref:'الإجمالي في الشيت',sal:'المرتب',pay:'صافي المرتب',tot:'الإجمالي',month:'الشهر',div:'المقسوم عليه',saved_at:'تاريخ الحفظ'};
 function exportRows(rows,extra={}){return rows.map(o=>{const r={};for(const k of F)if(o[k]!==undefined)r[EXPORT_LABELS[k]||k]=o[k];for(const [k,v] of Object.entries(extra))r[EXPORT_LABELS[k]||k]=v;return r})}
 async function exportAllData(){
  const btn=$('exportAll');btn.disabled=true;const old=btn.textContent;btn.textContent='جاري تجهيز الملف...';
@@ -511,6 +511,139 @@ $('ordersImportFile').addEventListener('change',e=>{
     finally{e.target.value='';}
   };
   reader.onerror=()=>flash('تعذر قراءة ملف الأوردرات.');
+  reader.readAsArrayBuffer(file);
+});
+
+// استيراد عدد التحويلات: عدد مرات ظهور اسم المندوب في عمود Driver.
+$('tripsImportBtn').addEventListener('click',()=>{
+  if(!D.d.length){flash('لازم ترفع شيت المرتبات أولًا عشان نطابق المندوبين.');return}
+  $('tripsImportFile').click();
+});
+$('tripsImportFile').addEventListener('change',e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const wb=XLSX.read(reader.result,{type:'array'});
+      const clean=v=>String(v==null?'':v).trim();
+      const norm=v=>clean(v).toLowerCase().replace(/[\s\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي');
+      let parsed=null;
+      // البحث عن عمود Driver في أي صف، لأن مكان العناوين قد يتغير.
+      for(const sn of wb.SheetNames){
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,blankrows:false});
+        for(let ri=0;ri<rows.length;ri++){
+          const cells=rows[ri]||[];
+          const ci=cells.findIndex(v=>['driver','drivername','deliverydriver'].includes(norm(v).replace(/[_-]/g,'')));
+          if(ci>=0){parsed={rows,headerRow:ri,driverIndex:ci,sheet:sn};break}
+        }
+        if(parsed)break;
+      }
+      if(!parsed)throw new Error('مش لاقي عمود عنوانه Driver. اتأكد إن فيه صف عناوين مكتوب فيه Driver.');
+      const counts=new Map();
+      for(const row of parsed.rows.slice(parsed.headerRow+1)){
+        if(!row)continue;
+        const name=clean(row[parsed.driverIndex]);
+        if(!name)continue;
+        const key=norm(name);if(!key)continue;
+        const item=counts.get(key)||{name,count:0};item.count++;
+        counts.set(key,item);
+      }
+      if(!counts.size)throw new Error('لقيت عنوان Driver لكن مفيش أسماء تحته.');
+      const byName=new Map();
+      for(const emp of D.d){const key=norm(emp.name);if(!key)continue;if(!byName.has(key))byName.set(key,[]);byName.get(key).push(emp)}
+      const matched=[],unknown=[],ambiguous=[];
+      for(const item of counts.values()){
+        const list=byName.get(norm(item.name))||[];
+        if(list.length===1)matched.push({...item,emp:list[0]});
+        else if(list.length>1)ambiguous.push({...item,employees:list});
+        else unknown.push(item);
+      }
+      if(!matched.length)throw new Error('لم يتم العثور على أي مندوب مطابق بالاسم. راجع أسماء Driver في التقرير وأسماء المندوبين في النظام.');
+      const preview=[
+        'مراجعة استيراد التحويلات:',
+        `أسماء مطابقة: ${matched.length}`,
+        `أسماء غير موجودة في النظام: ${unknown.length}`,
+        `أسماء مكررة في النظام وتحتاج مراجعة: ${ambiguous.length}`,'',
+        ...matched.slice(0,35).map(x=>`${x.emp.name} | التحويلات: ${x.count}`),
+        ...(matched.length>35?[`... و ${matched.length-35} مندوب آخر`]:[]),
+        ...(unknown.length?['','أسماء غير مطابقة: '+unknown.slice(0,12).map(x=>`${x.name} (${x.count})`).join('، ')+(unknown.length>12?' ...':'')]:[]),
+        ...(ambiguous.length?['','أسماء مكررة في النظام: '+ambiguous.slice(0,10).map(x=>x.name).join('، ') +(ambiguous.length>10?' ...':'')]:[]),
+        '',
+        'هل تريد متابعة التحديث؟ سيتم استبدال عدد التحويلات الحالي بالعدد المحسوب من مرات ظهور الاسم.'
+      ].join('\n');
+      if(!window.confirm(preview))return;
+      const finalAmbiguous=ambiguous.length?window.confirm('فيه أسماء مرتبطة بأكثر من مندوب في النظام، ولن يتم تحديثها تلقائيًا. هل تريد تحديث الأسماء المطابقة فقط؟'):true;
+      if(!finalAmbiguous)return;
+      matched.forEach(x=>{x.emp.trips=x.count;calc(x.emp)});
+      cur='d';$('br').value='';render();scheduleDraft();
+      flash(`تم استيراد التحويلات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} اسم غير مطابق و${ambiguous.length} اسم ملتبس.`);
+    }catch(err){flash('تعذر استيراد التحويلات: '+(err.message||err));}
+    finally{e.target.value='';}
+  };
+  reader.onerror=()=>flash('تعذر قراءة ملف التحويلات.');
+  reader.readAsArrayBuffer(file);
+});
+
+// استيراد أيام الجزاءات حسب Code مع التأكد من Full Name؛ لا يؤثر على حساب المرتب.
+$('penaltiesImportBtn').addEventListener('click',()=>{
+  if(!D.s.length&&!D.d.length){flash('لازم ترفع شيت المرتبات أولًا عشان نطابق الموظفين.');return}
+  $('penaltiesImportFile').click();
+});
+$('penaltiesImportFile').addEventListener('change',e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const wb=XLSX.read(reader.result,{type:'array'});
+      const clean=v=>String(v==null?'':v).trim();
+      const norm=v=>clean(v).toLowerCase().replace(/[\s\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي');
+      const nh=v=>norm(v).replace(/[_-]/g,'');
+      let parsed=null;
+      const aliases={code:['code','employeecode','staffcode'],name:['fullname','name','employeename'],days:['numbersofdaysdeducted','numberofdaysdeducted','daydeducted','daysdeducted']};
+      for(const sn of wb.SheetNames){
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,blankrows:false});
+        for(let ri=0;ri<rows.length;ri++){
+          const cells=rows[ri]||[];
+          const ix=arr=>cells.findIndex(v=>arr.includes(nh(v)));
+          const ci=ix(aliases.code),ni=ix(aliases.name),di=ix(aliases.days);
+          if(ci>=0&&ni>=0&&di>=0){parsed={rows,headerRow:ri,ci,ni,di,sheet:sn};break}
+        }
+        if(parsed)break;
+      }
+      if(!parsed)throw new Error('مش لاقي صف عناوين فيه Code وFull Name وNumbers of Days Deducted.');
+      const totals=new Map();
+      for(const row of parsed.rows.slice(parsed.headerRow+1)){
+        if(!row)continue;
+        const code=clean(row[parsed.ci]);if(!code)continue;
+        const name=clean(row[parsed.ni]);
+        const raw=row[parsed.di];
+        const value=raw==null||raw===''?0:num(String(raw).replace(/,/g,''));
+        const item=totals.get(code)||{code,name,days:0,rows:0};
+        item.days+=value;item.rows++;
+        if(!item.name&&name)item.name=name;
+        totals.set(code,item);
+      }
+      const employees=D.s.concat(D.d),byCode=new Map();
+      for(const emp of employees){const code=clean(emp.code);if(!byCode.has(code))byCode.set(code,[]);byCode.get(code).push(emp)}
+      const matched=[],unknown=[],ambiguous=[];
+      for(const item of totals.values()){
+        const list=byCode.get(item.code)||[];
+        if(!list.length){unknown.push(item);continue}
+        if(list.length!==1){ambiguous.push({...item,employees:list});continue}
+        const emp=list[0];matched.push({...item,emp,nameOK:norm(item.name)===norm(emp.name)});
+      }
+      if(!matched.length)throw new Error('لم يتم العثور على موظفين مطابقين باستخدام Code.');
+      const different=matched.filter(x=>!x.nameOK);
+      const preview=['مراجعة استيراد أيام الجزاءات:',`موظفون مطابقون بالكود: ${matched.length}`,`الأسماء مطابقة: ${matched.length-different.length}`,`الأسماء مختلفة: ${different.length}`,`أكواد غير موجودة: ${unknown.length}`,`أكواد مكررة بالنظام: ${ambiguous.length}`,'',...matched.slice(0,35).map(x=>`${x.code} | النظام: ${x.emp.name} | التقرير: ${x.name||'بدون اسم'} | ${x.nameOK?'الاسم مطابق':'⚠ الاسم مختلف'} | أيام الجزاء: ${x.days}`),...(matched.length>35?[`... و${matched.length-35} موظف آخر`]:[]),...(unknown.length?['','أكواد غير موجودة: '+unknown.slice(0,12).map(x=>x.code).join(', ')]:[]),...(ambiguous.length?['','أكواد مكررة: '+ambiguous.slice(0,12).map(x=>x.code).join(', ')]:[]),'','سيتم استبدال خانة الجزاءات بعدد الأيام المجمّع. لن يؤثر ذلك على حساب المرتب. هل تريد المتابعة؟'].join('\n');
+      if(!window.confirm(preview))return;
+      if(different.length&&!window.confirm('بعض الأسماء مختلفة رغم تطابق الكود. هل تؤكد تحديثها؟\n\n'+different.slice(0,20).map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`).join('\n')))return;
+      matched.forEach(x=>{x.emp.penalties=x.days});
+      cur=matched.some(x=>x.emp.t==='s')?'s':'d';$('br').value='';render();scheduleDraft();
+      flash(`تم استيراد أيام الجزاءات لـ ${matched.length} موظف. تم تجاهل ${unknown.length} كود غير مطابق و${ambiguous.length} كود مكرر.`);
+    }catch(err){flash('تعذر استيراد الجزاءات: '+(err.message||err));}
+    finally{e.target.value='';}
+  };
+  reader.onerror=()=>flash('تعذر قراءة ملف الجزاءات.');
   reader.readAsArrayBuffer(file);
 });
 
