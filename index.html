@@ -166,8 +166,8 @@ tr.diff td{background:var(--badbg)}
   <div class="bar">
     <input id="q" type="search" placeholder="بحث بالاسم أو الكود">
     <select id="br"></select>
-    <button class="ghost" id="again" type="button">رفع شيت آخر</button>
-    <input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button>
+    <button class="ghost" id="again" type="button">رفع شيت آخر</button><button class="ghost" id="ordersImportBtn" type="button">استيراد عدد الأوردرات</button><input id="ordersImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide">
+    <input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button><button class="ghost hide" id="exportAll" type="button">تصدير كل البيانات Excel</button>
   </div>
   <div class="set">
     <label>المقسوم عليه (المساعدين) <input id="div" type="number" value="26"></label>
@@ -375,7 +375,7 @@ $('det').addEventListener('dragover',e=>{const row=e.target.closest('.field-row'
 $('det').addEventListener('drop',e=>{const row=e.target.closest('.field-row');if(!draggedField||!row||row===draggedField)return;e.preventDefault();const box=$('edit-fields');const r=row.getBoundingClientRect();box.insertBefore(draggedField,e.clientY<r.top+r.height/2?row:row.nextSibling);saveDetailFieldOrder();$('det').querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});
 $('det').addEventListener('dragend',()=>{if(draggedField)draggedField.classList.remove('dragging');draggedField=null;$('det').querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'))});
 $('tbl').addEventListener('click',e=>{const d=e.target.dataset.d;if(d!=null){e.preventDefault();openDet(+d)}});
-const PM=['','Dopay','Paymint','Instapay','Cash'],MK=new Set(['branch','rate','hr','tr','or','pm']);
+const PM=['','Dopay','Paymint','Instapay','Cash'],MK=new Set(['branch','rate','hr','tr','or','pm','ins']);
 const F=['t','code','name','branch','pm','h','days','abs','hol','late','ot','disc','allow','adv','sh','ins','bonus','rate','hr','tr','or','trips','orders','ref','sal','pay','tot'];
 let DB=null,CAN=true,MAST={},tm={},ow='';
 const dt=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v);
@@ -398,18 +398,122 @@ function fld(o,k,i,t){const a=i===''?` id="f${k}"`:` data-i="${i}"`;
  return `<input type="number" step="${d?'any':'1'}" value="${v}" data-k="${k}"${a} aria-label="${k}">`}
 function cellT(o,[k,l,t],i){return t==='n'?`<td><a href="#" data-d="${i}">${esc(o.name)}</a></td>`:t==='x'?`<td>${esc(o.code)}</td>`:t[0]==='r'?`<td data-o="${k}">${fld(o,k,i,t)}</td>`:`<td>${fld(o,k,i,t)}</td>`}
 function rowD(o,[k,l,t]){const v=t==='n'?esc(o.name):t==='x'?esc(o.code):fld(o,k,'',t);return `<div class="rw field-row" draggable="true" data-field="${k}"><span class="drag-handle" aria-hidden="true">⠿</span><label for="f${k}">${l}</label>${t[0]==='r'?`<b data-o="${k}">${v}</b>`:v}</div>`}
-function mast(o){const m={t:o.t,code:o.code,name:o.name,branch:o.branch,pm:o.pm||''};if(o.t==='s')m.rate=o.rate;else{m.hr=o.hr;m.tr=o.tr;m.or=o.or}return m}
+function mast(o){const m={t:o.t,code:o.code,name:o.name,branch:o.branch,pm:o.pm||'',ins:num(o.ins)};if(o.t==='s')m.rate=o.rate;else{m.hr=o.hr;m.tr=o.tr;m.or=o.or}return m}
 function applyMasters(){for(const o of D.s.concat(D.d)){const m=MAST[o.code];if(m&&m.t===o.t)for(const k of MK)if(m[k]!=null)o[k]=m[k]}}
 function setF(o,k,v){o[k]=(k==='pm'||k==='branch')?v:num(v);scheduleDraft();if(MK.has(k)&&MODE!=='pay'&&DB&&CAN){clearTimeout(tm[o.code]);tm[o.code]=setTimeout(()=>save1(o),800)}}
 const fail=e=>flash('فشل ('+(e.message||e.code)+')');
 async function save1(o){const m=mast(o);const {error}=await SB.from('masters').upsert({code:o.code,data:m,updated_at:new Date().toISOString()});if(error)return fail(error);MAST[o.code]=m;flash('اتحفظ: '+o.name)}
-async function saveAll(){const rows=[],emps={};for(const o of D.s.concat(D.d)){if(o.t==='s'&&!o.rate&&!o.pm)continue;const m=mast(o);emps[o.code]=m;rows.push({code:o.code,data:m,updated_at:new Date().toISOString()})}const {error}=await SB.from('masters').upsert(rows);if(error)return fail(error);Object.assign(MAST,emps);flash('اتحفظ '+rows.length+' موظف')}
+async function saveAll(){const rows=[],emps={};for(const o of D.s.concat(D.d)){if(o.t==='s'&&!o.rate&&!o.pm&&!o.ins)continue;const m=mast(o);emps[o.code]=m;rows.push({code:o.code,data:m,updated_at:new Date().toISOString()})}const {error}=await SB.from('masters').upsert(rows);if(error)return fail(error);Object.assign(MAST,emps);flash('اتحفظ '+rows.length+' موظف')}
 async function saveMonth(){const key=$('mkey').value;if(!key)return flash('اختار الشهر الأول');
  if(ow!==key){const {data,error}=await SB.from('months').select('key').eq('key',key);if(error)return fail(error);if(data.length){ow=key;$('saveM').textContent='تأكيد استبدال الشهر';return flash('شهر '+key+' محفوظ قبل كده. اضغط تاني لو عاوز تستبدله.')}}
  const all=D.s.concat(D.d);all.forEach(calc);
  const rows=all.map(o=>{const r={};for(const k of F)if(o[k]!==undefined)r[k]=o[k];return r});
  const {error}=await SB.from('months').upsert({key,n:all.length,total:all.reduce((a,o)=>a+o.tot,0),data:{div:S.div,rows},saved_at:new Date().toISOString()});
  if(error)return fail(error);ow='';$('saveM').textContent='حفظ الشهر';saveDraftNow();flash('اتحفظ شهر '+key)}
+const EXPORT_LABELS={t:'النوع',code:'الكود',name:'الموظف',branch:'الفرع',pm:'طريقة القبض',ins:'التأمينات',rate:'قيمة الساعة',hr:'سعر الساعة',tr:'سعر التحويلة',or:'سعر الأوردر',h:'الساعات',days:'أيام الحضور',abs:'غياب بدون إذن',hol:'إجازة رسمية',late:'التأخيرات',ot:'الإضافي',disc:'الخصم',allow:'العدية',adv:'السلف',sh:'العجز',bonus:'الحافز',avg:'متوسط الساعات',net:'صافي الساعات',trips:'التحويلات',orders:'الأوردرات',ref:'الإجمالي في الشيت',sal:'المرتب',pay:'صافي المرتب',tot:'الإجمالي',month:'الشهر',div:'المقسوم عليه',saved_at:'تاريخ الحفظ'};
+function exportRows(rows,extra={}){return rows.map(o=>{const r={};for(const k of F)if(o[k]!==undefined)r[EXPORT_LABELS[k]||k]=o[k];for(const [k,v] of Object.entries(extra))r[EXPORT_LABELS[k]||k]=v;return r})}
+async function exportAllData(){
+ const btn=$('exportAll');btn.disabled=true;const old=btn.textContent;btn.textContent='جاري تجهيز الملف...';
+ try{
+  const wb=XLSX.utils.book_new();
+  const current=D.s.concat(D.d);current.forEach(calc);
+  const currentRows=exportRows(current,{month:$('mkey').value||'',div:S.div});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(currentRows.length?currentRows:[{ملاحظة:'لا توجد بيانات حالية'}]),'البيانات الحالية');
+  let masters=[];
+  if(SB&&DB){const {data,error}=await SB.from('masters').select('code,data,updated_at').order('code');if(error)throw error;masters=(data||[]).map(x=>{const d=x.data||{};return {...d,code:x.code,updated_at:x.updated_at}})}
+  else masters=Object.values(MAST||{});
+  const masterRows=masters.map(o=>{const r={};for(const k of ['code','name','branch','t','pm','ins','rate','hr','tr','or'])if(o[k]!==undefined)r[EXPORT_LABELS[k]||k]=o[k];if(o.updated_at)r[EXPORT_LABELS.saved_at]=o.updated_at;return r});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(masterRows.length?masterRows:[{ملاحظة:'لا توجد بيانات موظفين محفوظة'}]),'بيانات الموظفين');
+  let months=[];
+  if(SB&&DB){const {data,error}=await SB.from('months').select('key,data,n,total,saved_at').order('key',{ascending:true});if(error)throw error;months=data||[]}
+  const monthly=[];
+  for(const m of months){const payload=m.data||{};for(const o of (payload.rows||[])){const r={};for(const k of F)if(o[k]!==undefined)r[EXPORT_LABELS[k]||k]=o[k];r['الشهر']=m.key;r['المقسوم عليه']=payload.div??'';r['إجمالي الشهر المحفوظ']=m.total??'';r['تاريخ الحفظ']=m.saved_at??'';monthly.push(r)}}
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(monthly.length?monthly:[{ملاحظة:'لا توجد شهور محفوظة في قاعدة البيانات'}]),'المرتبات الشهرية');
+  XLSX.writeFile(wb,'تصدير_بيانات_المرتبات_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  flash('تم تجهيز ملف التصدير');
+ }catch(e){fail(e)}finally{btn.disabled=false;btn.textContent=old}
+}
+$('exportAll').addEventListener('click',exportAllData);
+
+// استيراد عدد الأوردرات من تقرير المبيعات وتجميع Sales Count حسب Seller Code.
+$('ordersImportBtn').addEventListener('click',()=>{
+  if(!D.d.length){flash('لازم ترفع شيت المرتبات أولًا عشان نطابق المندوبين.');return}
+  $('ordersImportFile').click();
+});
+$('ordersImportFile').addEventListener('change',e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const wb=XLSX.read(reader.result,{type:'array'});
+      const clean=v=>String(v==null?'':v).trim();
+      const norm=v=>clean(v).toLowerCase().replace(/[\s\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي');
+      const normHeader=v=>norm(v).replace(/[_-]/g,'');
+      let parsed=null;
+      // البحث في كل الصفوف عن صف العناوين؛ مكانه ممكن يتغير من تقرير للتاني.
+      const headerAliases={
+        code:['seller code'],
+        name:['seller name'],
+        count:['sales count']
+      };
+      for(const sn of wb.SheetNames){
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,blankrows:false});
+        for(let ri=0;ri<rows.length;ri++){
+          const cells=rows[ri]||[];
+          const findIndex=aliases=>cells.findIndex(v=>aliases.includes(normHeader(v)));
+          const codeIndex=findIndex(headerAliases.code),nameIndex=findIndex(headerAliases.name),countIndex=findIndex(headerAliases.count);
+          if(codeIndex>=0&&nameIndex>=0&&countIndex>=0){parsed={rows,headerRow:ri,codeIndex,nameIndex,countIndex,sheet:sn};break}
+        }
+        if(parsed)break;
+      }
+      if(!parsed)throw new Error('مش لاقي صف عناوين فيه SELLER CODE وSELLER NAME وSales Count. اتأكد إن الأعمدة موجودة في نفس الصف.');
+      const totals=new Map();
+      for(const r of parsed.rows.slice(parsed.headerRow+1)){
+        if(!r||!r.length)continue;
+        const code=clean(r[parsed.codeIndex]);if(!code)continue;
+        const sellerName=clean(r[parsed.nameIndex]);
+        const old=totals.get(code)||{code,name:sellerName,count:0,lines:0};
+        const amount=num(r[parsed.countIndex]);
+        if(Number.isFinite(amount))old.count+=amount;
+        old.lines++;
+        if(!old.name&&sellerName)old.name=sellerName;
+        totals.set(code,old);
+      }
+      const byCode=new Map(D.d.map(o=>[clean(o.code),o]));
+      const matched=[],unknown=[];
+      for(const item of totals.values()){
+        const emp=byCode.get(item.code);
+        if(!emp){unknown.push(item);continue}
+        matched.push({...item,emp,nameOK:norm(item.name)===norm(emp.name)});
+      }
+      if(!matched.length)throw new Error('لم يتم العثور على أي مندوب مطابق في السيستم عن طريق SELLER CODE.');
+      const same=matched.filter(x=>x.nameOK),different=matched.filter(x=>!x.nameOK);
+      const preview=[
+        'مراجعة استيراد الأوردرات قبل التعديل:',
+        `عدد المندوبين المطابقين بالكود: ${matched.length}`,
+        `الاسم مطابق: ${same.length}`,
+        `الاسم مختلف ويحتاج تأكيدك: ${different.length}`,
+        `أكواد غير موجودة في السيستم: ${unknown.length}`,
+        '',
+        ...matched.slice(0,35).map(x=>`${x.code} | النظام: ${x.emp.name} | التقرير: ${x.name||'بدون اسم'} | ${x.nameOK?'الاسم مطابق':'⚠ الاسم مختلف'} | الأوردرات: ${x.count}`),
+        ...(matched.length>35?[`... و ${matched.length-35} مندوب آخر`]:[]),
+        ...(unknown.length?['','أكواد غير موجودة: '+unknown.slice(0,12).map(x=>x.code).join(', ') +(unknown.length>12?' ...':'')]:[]),
+        '',
+        'هل تريد متابعة التحديث؟ سيتم استبدال عدد الأوردرات الحالي بالقيم المجمعة من التقرير.'
+      ].join('\n');
+      if(!window.confirm(preview))return;
+      const finalDifferent=different.length?window.confirm('تنبيه: فيه اختلاف في أسماء بعض المندوبين رغم تطابق الكود. هل تؤكد تحديثهم؟\n\n'+different.slice(0,20).map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`).join('\n')):true;
+      if(!finalDifferent)return;
+      matched.forEach(x=>{x.emp.orders=x.count;calc(x.emp)});
+      cur='d';$('br').value='';render();scheduleDraft();
+      flash(`تم استيراد الأوردرات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} كود غير مطابق.`);
+    }catch(err){flash('تعذر استيراد الأوردرات: '+(err.message||err));}
+    finally{e.target.value='';}
+  };
+  reader.onerror=()=>flash('تعذر قراءة ملف الأوردرات.');
+  reader.readAsArrayBuffer(file);
+});
+
 async function showMonths(){const p=$('mp');if(!p.classList.contains('hide')){p.classList.add('hide');return}
  p.classList.remove('hide');p.textContent='جاري التحميل...';
  const {data,error}=await SB.from('months').select('key,n,total').order('key',{ascending:false});
@@ -432,7 +536,7 @@ const SB=(window.supabase&&/^https?:/.test(SUPABASE_URL))?window.supabase.create
 async function afterLogin(){const {data,error}=await SB.from('masters').select('code,data');if(error){flash('القراءة فشلت: '+error.message);return}
  MAST=Object.fromEntries(data.map(r=>[r.code,r.data]));DB=true;
  $('login').classList.add('hide');$('drop').classList.remove('hide');$('out').classList.remove('hide');
- ['months','months0','saveM','saveP'].forEach(i=>$(i).classList.remove('hide'));if(!restoreDraft())flash('متصل بقاعدة البيانات')}
+ ['months','months0','saveM','saveP','exportAll'].forEach(i=>$(i).classList.remove('hide'));if(!restoreDraft())flash('متصل بقاعدة البيانات')}
 const ready=(async()=>{if(!SB){flash('لسه لازم تحط رابط ومفتاح Supabase في أول السكريبت (اقرا README.md). لحد وقتها الحساب شغال بدون حفظ.');return}
  $('drop').classList.add('hide');const {data}=await SB.auth.getSession();if(data.session)await afterLogin();else $('login').classList.remove('hide')})();
 $('lg').addEventListener('click',async()=>{const {error}=await SB.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error){$('lerr').textContent='الإيميل أو الباسورد غلط';return}$('lerr').textContent='';await afterLogin()});
