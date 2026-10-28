@@ -153,12 +153,28 @@ tr.diff td{background:var(--badbg)}
 <div class="rw"><label for="pw">الباسورد</label><input id="pw" type="password" style="width:230px"></div>
 <button class="btn" id="lg" type="button">دخول</button><p id="lerr" class="sub"></p></div>
 <div id="drop" class="drop">
-  <p>اسحب ملف الإكسيل هنا أو اختاره من جهازك</p>
-  <button class="pri btn" id="pick" type="button">اختيار الملف</button>
-  <input id="file" type="file" accept=".xlsx,.xlsm,.xls" class="hide">
-  <button class="ghost hide" id="months0" type="button">فتح شهر محفوظ</button>
+  <div id="payrollSetup">
+    <h2>بدء Payroll جديد</h2>
+    <p>اختار شهر المرتب. الفترة هتتحسب تلقائيًا من يوم 21 في الشهر السابق لحد يوم 20 من الشهر المختار.</p>
+    <div class="bar" style="justify-content:center">
+      <label for="newMonth">شهر المرتب</label><input id="newMonth" type="month">
+      <button class="btn" id="startPayroll" type="button">بدء Payroll جديد</button>
+    </div>
+    <p id="periodLabel" class="sub"></p>
+    <button class="ghost hide" id="resumeDraft" type="button">استكمال المسودة السابقة</button>
+  </div>
+  <div id="uploadSetup" class="hide">
+    <h2 id="uploadTitle">الخطوة 1: رفع شيت الداتا الكبير</h2>
+    <p id="uploadPeriod" class="sub"></p>
+    <div id="workflowSteps" class="bar" style="justify-content:center"></div>
+    <p>ارفع الشيت المطلوب للخطوة الحالية فقط. بعد كل استيراد هتظهر مراجعة بالمطابقات والأخطاء.</p>
+    <button class="pri btn" id="pick" type="button">اختيار شيت الداتا الكبير</button>
+    <input id="file" type="file" accept=".xlsx,.xlsm,.xls" class="hide">
+    <button class="ghost hide" id="months0" type="button">فتح شهر محفوظ</button>
+  </div>
 </div>
 <div id="err" class="msg hide"></div>
+<div id="importReview" class="cardx hide" style="max-width:none"></div>
 <div id="mp" class="cardx hide"></div>
 
 <section id="app" class="hide">
@@ -190,10 +206,12 @@ let D={s:[],d:[]},cur='s',S={div:26,ord:20},MODE='pay';
 // مسودة تلقائية محلية: تُحفظ على نفس المتصفح والجهاز، ولا تحتاج اتصالًا بالإنترنت.
 const DRAFT_KEY='alpha_payroll_draft_v1';
 let draftTimer=null,restoringDraft=false;
+let workflowStage=0,activePayrollMonth='';
+const WORKFLOW_NAMES=['شيت الداتا الكبير','شيت الجزاءات','شيت الأوردرات','شيت التحويلات'];
 function saveDraftNow(){
   try{
     if(!D.s.length&&!D.d.length)return;
-    const draft={version:1,savedAt:new Date().toISOString(),D,cur,S,MODE,mkey:$('mkey')?.value||'',thr:$('thr')?.value||'30',hd:$('hd')?.value||'1',exc:!!$('exc')?.checked};
+    const draft={version:1,savedAt:new Date().toISOString(),D,cur,S,MODE,mkey:$('mkey')?.value||'',workflowStage,activePayrollMonth,thr:$('thr')?.value||'30',hd:$('hd')?.value||'1',exc:!!$('exc')?.checked};
     localStorage.setItem(DRAFT_KEY,JSON.stringify(draft));
     const st=$('st');if(st&&DB)st.textContent='المسودة محفوظة تلقائيًا محليًا';
   }catch(e){const st=$('st');if(st)st.textContent='تعذر حفظ المسودة محليًا؛ مساحة المتصفح قد تكون ممتلئة';}
@@ -203,7 +221,7 @@ function restoreDraft(){
   try{
     const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return false;
     const x=JSON.parse(raw);if(!x||x.version!==1||!x.D||!Array.isArray(x.D.s)||!Array.isArray(x.D.d)||(!x.D.s.length&&!x.D.d.length))return false;
-    restoringDraft=true;D=x.D;cur=x.cur==='d'&&D.d.length?'d':(D.s.length?'s':'d');S={...S,...(x.S||{})};MODE=x.MODE||'pay';
+    restoringDraft=true;D=x.D;cur=x.cur==='d'&&D.d.length?'d':(D.s.length?'s':'d');S={...S,...(x.S||{})};MODE=x.MODE||'pay';workflowStage=Number.isInteger(x.workflowStage)?x.workflowStage:4;activePayrollMonth=x.activePayrollMonth||x.mkey||'';
     if(x.mkey)$('mkey').value=x.mkey;if(x.thr!=null)$('thr').value=x.thr;if(x.hd!=null)$('hd').value=x.hd;if(x.exc!=null)$('exc').checked=!!x.exc;
     $('attset').classList.toggle('hide',MODE!=='att');$('drop').classList.add('hide');$('app').classList.remove('hide');$('det').classList.add('hide');$('div').value=S.div||26;render();
     const when=x.savedAt?new Date(x.savedAt).toLocaleString('ar-EG'):'وقت غير معروف';flash('تم استرجاع المسودة تلقائيًا — آخر حفظ: '+when);return true;
@@ -252,9 +270,10 @@ function load(buf){
     else if(hd.includes('قيمة الساعه'))D.s=parse(wb.Sheets[n],'s');
   }
   if(!D.s.length&&!D.d.length)throw new Error('مش لاقي شيت حضور ولا شيت مرتبات. اتأكد إن العناوين في الصف الأول زي الملف الأصلي.');
+  if(activePayrollMonth)$('mkey').value=activePayrollMonth;
   cur=D.s.length?'s':'d';$('attset').classList.toggle('hide',MODE!=='att');
   $('drop').classList.add('hide');$('app').classList.remove('hide');
-  render();scheduleDraft();
+  render();workflowStage=1;updateWorkflowUI();const mainIssues=D.s.concat(D.d).map(o=>{calc(o);return {o,w:warns(o)}}).filter(x=>x.w.length);showImportReview('نتيجة فحص شيت الداتا الكبير', [`عدد المساعدين: ${D.s.length}`,`عدد المندوبين: ${D.d.length}`,`موظفون عليهم ملاحظات: ${mainIssues.length}`,...mainIssues.slice(0,100).map(x=>`${x.o.code||'بدون كود'} | ${x.o.name} | ${x.w.map(w=>w[1]).join('، ')}`),...(mainIssues.length>100?[`... و${mainIssues.length-100} موظف آخر`]:[])].join('\n'),mainIssues.length?'bad':'ok');scheduleDraft();
 }
 const mn=v=>{if(v==null||v==='')return null;if(typeof v==='number')return Math.round(v*1440);const m=String(v).match(/(\d+):(\d+)/);return m?+m[1]*60+ +m[2]:null};
 function parseAtt(ws){
@@ -347,7 +366,34 @@ function go(f){
   r.onload=async()=>{await ready;try{load(new Uint8Array(r.result))}catch(x){$('err').textContent=x.message;$('err').classList.remove('hide')}};
   r.readAsArrayBuffer(f);
 }
-$('pick').addEventListener('click',()=>$('file').click());
+function monthPeriod(key){
+  if(!key)return '';
+  const [y,m]=key.split('-').map(Number);if(!y||!m)return '';
+  const start=new Date(y,m-2,21),end=new Date(y,m-1,20);
+  const f=d=>d.toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'});
+  return `فترة المرتب: من ${f(start)} إلى ${f(end)}`;
+}
+function updatePeriodLabel(){const key=$('newMonth').value;$('periodLabel').textContent=monthPeriod(key)}
+function updateWorkflowUI(){
+  const names=WORKFLOW_NAMES;
+  $('workflowSteps').innerHTML=names.map((n,i)=>`<span class="tag ${i<workflowStage?'ok':i===workflowStage?'w':''}" style="padding:5px 10px;border:1px solid var(--line)">${i<workflowStage?'✓ ':i===workflowStage?'▶ ':''}${i+1}. ${n}</span>`).join('');
+  const title=workflowStage>=4?'اكتملت خطوات الاستيراد':`الخطوة ${workflowStage+1}: رفع ${names[workflowStage]}`;
+  $('uploadTitle').textContent=title;$('pick').textContent=workflowStage===0?'اختيار شيت الداتا الكبير':`اختيار شيت ${names[workflowStage]}`;
+  $('pick').disabled=workflowStage>=4;
+  $('uploadPeriod').textContent=monthPeriod(activePayrollMonth);
+}
+$('newMonth').value=new Date().toISOString().slice(0,7);updatePeriodLabel();
+$('newMonth').addEventListener('change',updatePeriodLabel);
+$('startPayroll').addEventListener('click',()=>{
+  const key=$('newMonth').value;if(!key)return flash('اختار شهر المرتب الأول.');
+  if((D.s.length||D.d.length)&&!window.confirm('بدء Payroll جديد هيمسح بيانات المسودة الحالية من الشاشة. هل تريد المتابعة؟'))return;
+  D={s:[],d:[]};cur='s';MODE='pay';workflowStage=0;activePayrollMonth=key;
+  $('mkey').value=key;$('importReview').classList.add('hide');$('err').classList.add('hide');
+  $('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI();
+  $('file').click();
+});
+$('resumeDraft').addEventListener('click',()=>{if(restoreDraft()){activePayrollMonth=$('mkey').value||activePayrollMonth;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI()}else flash('مفيش مسودة سابقة قابلة للاستكمال.')});
+$('pick').addEventListener('click',()=>{if(workflowStage===0)$('file').click();else if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();else flash('اكتملت خطوات الاستيراد. تقدر تحفظ الشهر الآن.');});
 $('file').addEventListener('change',e=>e.target.files[0]&&go(e.target.files[0]));
 const dz=$('drop');
 ['dragover','dragenter'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('over')}));
@@ -381,8 +427,8 @@ let DB=null,CAN=true,MAST={},tm={},ow='';
 const dt=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v);
 const flash=t=>{$('st').textContent=t};
 const SP={
-s:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['rate','قيمة الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['penalties','الجزاءات','r0'],['disc','إجمالي الخصم','e2'],['net','صافى الساعات','r2'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']],
-d:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['hr','سعر الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['penalties','الجزاءات','r0'],['disc','إجمالي الخصم','e2'],['net','صافى الساعات','r2'],['trips','التحويلات','e0'],['tr','سعر التحويلة','e0'],['orders','الأوردرات','e0'],['or','سعر الأوردر','e0'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']]
+s:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['rate','قيمة الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['penalties','الجزاءات','r2'],['disc','إجمالي الخصم','e2'],['net','صافى الساعات','r2'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']],
+d:[['branch','الفرع','t'],['name','الموظف','n'],['code','الكود','x'],['hr','سعر الساعة','e0'],['days','أيام الحضور','r0'],['abs','غياب بدون إذن','r0'],['h','الساعات','e2'],['avg','متوسط الساعات','r2'],['hol','إجازة رسمية','e0'],['ot','الإضافي','e2'],['late','التأخيرات','e2'],['penalties','الجزاءات','r2'],['disc','إجمالي الخصم','e2'],['net','صافى الساعات','r2'],['trips','التحويلات','e0'],['tr','سعر التحويلة','e0'],['orders','الأوردرات','e0'],['or','سعر الأوردر','e0'],['allow','العيدية','e0'],['adv','السلف','e2'],['sh','العجز','e2'],['ins','تأمينات','e2'],['bonus','حافز','e2'],['pm','طريقة القبض','sel']]
 };
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 function branchOptions(o){
@@ -435,8 +481,18 @@ async function exportAllData(){
 }
 $('exportAll').addEventListener('click',exportAllData);
 
+function showImportReview(title,lines,kind='ok'){
+ const box=$('importReview');box.classList.remove('hide');
+ box.innerHTML=`<h3>${title}</h3><div style="white-space:pre-wrap;line-height:1.8">${String(lines).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>`;
+ box.style.borderColor=kind==='bad'?'var(--bad)':'var(--line)';
+}
+function finishWorkflowStep(stage,title,lines){
+ workflowStage=Math.max(workflowStage,stage);updateWorkflowUI();showImportReview(title,lines, /غير مطابق|مختلف|مشكلة|مكرر|خطأ/.test(lines)?'bad':'ok');scheduleDraft();
+}
+
 // استيراد عدد الأوردرات من تقرير المبيعات وتجميع Sales Count حسب Seller Code.
 $('ordersImportBtn').addEventListener('click',()=>{
+  if(workflowStage!==2){flash('اتبع ترتيب الاستيراد: شيت الداتا الكبير ثم الجزاءات ثم الأوردرات ثم التحويلات.');return}
   if(!D.d.length){flash('لازم ترفع شيت المرتبات أولًا عشان نطابق المندوبين.');return}
   $('ordersImportFile').click();
 });
@@ -506,7 +562,7 @@ $('ordersImportFile').addEventListener('change',e=>{
       if(!finalDifferent)return;
       matched.forEach(x=>{x.emp.orders=x.count;calc(x.emp)});
       cur='d';$('br').value='';render();scheduleDraft();
-      flash(`تم استيراد الأوردرات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} كود غير مطابق.`);
+      const issueText=[`تم تحديث ${matched.length} مندوب.`,`أكواد غير موجودة: ${unknown.length}`,`أسماء مختلفة: ${different.length}`,...(different.length?different.map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`):[]),...(unknown.length?unknown.map(x=>`كود غير موجود ${x.code} — ${x.name||'بدون اسم'}`):[])].join('\n');finishWorkflowStep(2,'نتيجة استيراد الأوردرات',issueText);flash(`تم استيراد الأوردرات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} كود غير مطابق.`);
     }catch(err){flash('تعذر استيراد الأوردرات: '+(err.message||err));}
     finally{e.target.value='';}
   };
@@ -516,6 +572,7 @@ $('ordersImportFile').addEventListener('change',e=>{
 
 // استيراد عدد التحويلات: عدد مرات ظهور اسم المندوب في عمود Driver.
 $('tripsImportBtn').addEventListener('click',()=>{
+  if(workflowStage!==3){flash('اتبع ترتيب الاستيراد: شيت الداتا الكبير ثم الجزاءات ثم الأوردرات ثم التحويلات.');return}
   if(!D.d.length){flash('لازم ترفع شيت المرتبات أولًا عشان نطابق المندوبين.');return}
   $('tripsImportFile').click();
 });
@@ -576,7 +633,7 @@ $('tripsImportFile').addEventListener('change',e=>{
       if(!finalAmbiguous)return;
       matched.forEach(x=>{x.emp.trips=x.count;calc(x.emp)});
       cur='d';$('br').value='';render();scheduleDraft();
-      flash(`تم استيراد التحويلات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} اسم غير مطابق و${ambiguous.length} اسم ملتبس.`);
+      const issueText=[`تم تحديث ${matched.length} مندوب.`,`أسماء غير موجودة: ${unknown.length}`,`أسماء ملتبسة: ${ambiguous.length}`,...unknown.map(x=>`اسم غير مطابق: ${x.name} (${x.count})`),...ambiguous.map(x=>`اسم ملتبس: ${x.name} (${x.count})`)].join('\n');finishWorkflowStep(3,'نتيجة استيراد التحويلات',issueText);flash(`تم استيراد التحويلات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} اسم غير مطابق و${ambiguous.length} اسم ملتبس.`);
     }catch(err){flash('تعذر استيراد التحويلات: '+(err.message||err));}
     finally{e.target.value='';}
   };
@@ -586,6 +643,7 @@ $('tripsImportFile').addEventListener('change',e=>{
 
 // استيراد أيام الجزاءات حسب Code مع التأكد من Full Name؛ لا يؤثر على حساب المرتب.
 $('penaltiesImportBtn').addEventListener('click',()=>{
+  if(workflowStage!==1){flash('اتبع ترتيب الاستيراد: شيت الداتا الكبير ثم الجزاءات ثم الأوردرات ثم التحويلات.');return}
   if(!D.s.length&&!D.d.length){flash('لازم ترفع شيت المرتبات أولًا عشان نطابق الموظفين.');return}
   $('penaltiesImportFile').click();
 });
@@ -639,7 +697,7 @@ $('penaltiesImportFile').addEventListener('change',e=>{
       if(different.length&&!window.confirm('بعض الأسماء مختلفة رغم تطابق الكود. هل تؤكد تحديثها؟\n\n'+different.slice(0,20).map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`).join('\n')))return;
       matched.forEach(x=>{x.emp.penalties=x.days});
       cur=matched.some(x=>x.emp.t==='s')?'s':'d';$('br').value='';render();scheduleDraft();
-      flash(`تم استيراد أيام الجزاءات لـ ${matched.length} موظف. تم تجاهل ${unknown.length} كود غير مطابق و${ambiguous.length} كود مكرر.`);
+      const issueText=[`تم تحديث ${matched.length} موظف.`,`أكواد غير موجودة: ${unknown.length}`,`أكواد مكررة: ${ambiguous.length}`,`أسماء مختلفة: ${different.length}`,...different.map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`),...unknown.map(x=>`كود غير موجود: ${x.code} — ${x.name||'بدون اسم'}`),...ambiguous.map(x=>`كود مكرر: ${x.code}`)].join('\n');finishWorkflowStep(1,'نتيجة استيراد الجزاءات',issueText);flash(`تم استيراد أيام الجزاءات لـ ${matched.length} موظف. تم تجاهل ${unknown.length} كود غير مطابق و${ambiguous.length} كود مكرر.`);
     }catch(err){flash('تعذر استيراد الجزاءات: '+(err.message||err));}
     finally{e.target.value='';}
   };
@@ -655,7 +713,7 @@ async function showMonths(){const p=$('mp');if(!p.classList.contains('hide')){p.
 async function openMonth(key){const {data,error}=await SB.from('months').select('data').eq('key',key).single();if(error)return fail(error);const x=data.data;
  const fix=r=>{for(const [k] of COLS[r.t])if(k!=='pm'&&typeof r[k]!=='number')r[k]=0;r.pm=r.pm||'';return r};
  const L=x.rows.map(r=>fix({...r}));D={s:L.filter(o=>o.t==='s'),d:L.filter(o=>o.t==='d')};
- MODE='saved';if(x.div){S.div=x.div;$('div').value=x.div}$('mkey').value=key;cur=D.s.length?'s':'d';
+ MODE='saved';workflowStage=4;activePayrollMonth=key;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI();if(x.div){S.div=x.div;$('div').value=x.div}$('mkey').value=key;cur=D.s.length?'s':'d';
  $('attset').classList.add('hide');$('mp').classList.add('hide');$('drop').classList.add('hide');$('app').classList.remove('hide');render();scheduleDraft();flash('مفتوح شهر '+key)}
 $('saveM').addEventListener('click',saveMonth);$('saveP').addEventListener('click',saveAll);
 $('months').addEventListener('click',showMonths);$('months0').addEventListener('click',showMonths);
@@ -669,7 +727,7 @@ const SB=(window.supabase&&/^https?:/.test(SUPABASE_URL))?window.supabase.create
 async function afterLogin(){const {data,error}=await SB.from('masters').select('code,data');if(error){flash('القراءة فشلت: '+error.message);return}
  MAST=Object.fromEntries(data.map(r=>[r.code,r.data]));DB=true;
  $('login').classList.add('hide');$('drop').classList.remove('hide');$('out').classList.remove('hide');
- ['months','months0','saveM','saveP','exportAll'].forEach(i=>$(i).classList.remove('hide'));if(!restoreDraft())flash('متصل بقاعدة البيانات')}
+ ['months','months0','saveM','saveP','exportAll'].forEach(i=>$(i).classList.remove('hide'));$('drop').classList.remove('hide');$('payrollSetup').classList.remove('hide');$('uploadSetup').classList.add('hide');try{const x=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');if(x&&x.D&&(x.D.s.length||x.D.d.length))$('resumeDraft').classList.remove('hide')}catch(_){}flash('متصل بقاعدة البيانات — ابدأ Payroll جديد أو استكمل المسودة السابقة')}
 const ready=(async()=>{if(!SB){flash('لسه لازم تحط رابط ومفتاح Supabase في أول السكريبت (اقرا README.md). لحد وقتها الحساب شغال بدون حفظ.');return}
  $('drop').classList.add('hide');const {data}=await SB.auth.getSession();if(data.session)await afterLogin();else $('login').classList.remove('hide')})();
 $('lg').addEventListener('click',async()=>{const {error}=await SB.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error){$('lerr').textContent='الإيميل أو الباسورد غلط';return}$('lerr').textContent='';await afterLogin()});
