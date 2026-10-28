@@ -169,6 +169,7 @@ tr.diff td{background:var(--badbg)}
     <div id="workflowSteps" class="bar" style="justify-content:center"></div>
     <p>ارفع الشيت المطلوب للخطوة الحالية فقط. بعد كل استيراد هتظهر مراجعة بالمطابقات والأخطاء.</p>
     <button class="pri btn" id="pick" type="button">اختيار شيت الداتا الكبير</button>
+    <button class="btn hide" id="nextStepBtn" type="button" style="margin-inline-start:8px">الانتقال للشيت التالي</button>
     <input id="file" type="file" accept=".xlsx,.xlsm,.xls" class="hide">
     <button class="ghost hide" id="months0" type="button">فتح شهر محفوظ</button>
   </div>
@@ -380,6 +381,9 @@ function updateWorkflowUI(){
   const title=workflowStage>=4?'اكتملت خطوات الاستيراد':`الخطوة ${workflowStage+1}: رفع ${names[workflowStage]}`;
   $('uploadTitle').textContent=title;$('pick').textContent=workflowStage===0?'اختيار شيت الداتا الكبير':`اختيار ${names[workflowStage]}`;
   $('pick').disabled=workflowStage>=4;
+  const next=$('nextStepBtn');
+  next.classList.toggle('hide',workflowStage<1||workflowStage>=4);
+  next.textContent=workflowStage===1?'التالي: استيراد شيت الجزاءات':workflowStage===2?'التالي: استيراد شيت الأوردرات':workflowStage===3?'التالي: استيراد شيت التحويلات':'الانتقال للشيت التالي';
   $('uploadPeriod').textContent=monthPeriod(activePayrollMonth);
 }
 $('newMonth').value=new Date().toISOString().slice(0,7);updatePeriodLabel();
@@ -394,6 +398,7 @@ $('startPayroll').addEventListener('click',()=>{
 });
 $('resumeDraft').addEventListener('click',()=>{if(restoreDraft()){activePayrollMonth=$('mkey').value||activePayrollMonth;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI()}else flash('مفيش مسودة سابقة قابلة للاستكمال.')});
 $('pick').addEventListener('click',()=>{if(workflowStage===0)$('file').click();else if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();else flash('اكتملت خطوات الاستيراد. تقدر تحفظ الشهر الآن.');});
+$('nextStepBtn').addEventListener('click',()=>{if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();});
 $('file').addEventListener('change',e=>e.target.files[0]&&go(e.target.files[0]));
 const dz=$('drop');
 ['dragover','dragenter'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('over')}));
@@ -562,7 +567,7 @@ $('ordersImportFile').addEventListener('change',e=>{
       if(!finalDifferent)return;
       matched.forEach(x=>{x.emp.orders=x.count;calc(x.emp)});
       cur='d';$('br').value='';render();scheduleDraft();
-      const issueText=[`تم تحديث ${matched.length} مندوب.`,`أكواد غير موجودة: ${unknown.length}`,`أسماء مختلفة: ${different.length}`,...(different.length?different.map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`):[]),...(unknown.length?unknown.map(x=>`كود غير موجود ${x.code} — ${x.name||'بدون اسم'}`):[])].join('\n');finishWorkflowStep(2,'نتيجة استيراد الأوردرات',issueText);flash(`تم استيراد الأوردرات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} كود غير مطابق.`);
+      const issueText=[`تم تحديث ${matched.length} مندوب.`,`أكواد غير موجودة: ${unknown.length}`,`أسماء مختلفة: ${different.length}`,...(different.length?different.map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`):[]),...(unknown.length?unknown.map(x=>`كود غير موجود ${x.code} — ${x.name||'بدون اسم'}`):[])].join('\n');finishWorkflowStep(3,'نتيجة استيراد الأوردرات',issueText);flash(`تم استيراد الأوردرات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} كود غير مطابق.`);
     }catch(err){flash('تعذر استيراد الأوردرات: '+(err.message||err));}
     finally{e.target.value='';}
   };
@@ -633,7 +638,7 @@ $('tripsImportFile').addEventListener('change',e=>{
       if(!finalAmbiguous)return;
       matched.forEach(x=>{x.emp.trips=x.count;calc(x.emp)});
       cur='d';$('br').value='';render();scheduleDraft();
-      const issueText=[`تم تحديث ${matched.length} مندوب.`,`أسماء غير موجودة: ${unknown.length}`,`أسماء ملتبسة: ${ambiguous.length}`,...unknown.map(x=>`اسم غير مطابق: ${x.name} (${x.count})`),...ambiguous.map(x=>`اسم ملتبس: ${x.name} (${x.count})`)].join('\n');finishWorkflowStep(3,'نتيجة استيراد التحويلات',issueText);flash(`تم استيراد التحويلات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} اسم غير مطابق و${ambiguous.length} اسم ملتبس.`);
+      const issueText=[`تم تحديث ${matched.length} مندوب.`,`أسماء غير موجودة: ${unknown.length}`,`أسماء ملتبسة: ${ambiguous.length}`,...unknown.map(x=>`اسم غير مطابق: ${x.name} (${x.count})`),...ambiguous.map(x=>`اسم ملتبس: ${x.name} (${x.count})`)].join('\n');finishWorkflowStep(4,'نتيجة استيراد التحويلات',issueText);flash(`تم استيراد التحويلات لـ ${matched.length} مندوب. تم تجاهل ${unknown.length} اسم غير مطابق و${ambiguous.length} اسم ملتبس.`);
     }catch(err){flash('تعذر استيراد التحويلات: '+(err.message||err));}
     finally{e.target.value='';}
   };
