@@ -452,9 +452,9 @@ $('ordersImportFile').addEventListener('change',e=>{
       let parsed=null;
       // البحث في كل الصفوف عن صف العناوين؛ مكانه ممكن يتغير من تقرير للتاني.
       const headerAliases={
-        code:['seller code'],
-        name:['seller name'],
-        count:['sales count']
+        code:['sellercode','sellerid','code'],
+        name:['sellername','seller'],
+        count:['salescount','salesqty']
       };
       for(const sn of wb.SheetNames){
         const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,blankrows:false});
