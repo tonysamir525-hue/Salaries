@@ -162,6 +162,15 @@ tr.diff td{background:var(--badbg)}
       <button class="btn" id="startPayroll" type="button">بدء Payroll جديد</button>
     </div>
     <p id="periodLabel" class="sub"></p>
+    <div class="cardx" style="margin-top:16px">
+      <h3>فتح Payroll قديم محفوظ</h3>
+      <p class="sub">اختار شهرًا محفوظًا في قاعدة البيانات لفتح بياناته ومراجعتها.</p>
+      <div class="bar" style="justify-content:center">
+        <select id="oldPayrollSelect" aria-label="اختيار Payroll قديم" style="min-width:220px"><option value="">جاري تحميل الشهور المحفوظة...</option></select>
+        <button class="ghost" id="openOldPayroll" type="button">فتح Payroll القديم</button>
+      </div>
+      <p id="oldPayrollStatus" class="sub" role="status"></p>
+    </div>
     <button class="ghost hide" id="resumeDraft" type="button">استكمال المسودة السابقة</button>
   </div>
   <div id="uploadSetup" class="hide">
@@ -750,6 +759,23 @@ async function loadPayrollMonthOptions(){
  const sel=$('payrollMonthSelect');if(!sel)return;const current=activePayrollMonth||$('mkey').value||'';
  try{const {data,error}=await SB.from('months').select('key').order('key',{ascending:false});if(error)throw error;const keys=[...new Set([current,...(data||[]).map(x=>x.key)].filter(Boolean))];sel.innerHTML='<option value="">اختار شهر محفوظ</option>'+keys.map(k=>`<option value="${k}">Payroll ${k}${k===current?' (الحالي)':''}</option>`).join('');sel.value=current&&keys.includes(current)?current:'';}catch(e){if(current){sel.innerHTML=`<option value="${current}">Payroll ${current} (الحالي)</option>`;sel.value=current;}}
 }
+async function loadOldPayrollOptions(){
+ const sel=$('oldPayrollSelect'),status=$('oldPayrollStatus');if(!sel)return;
+ sel.innerHTML='<option value="">جاري تحميل الشهور المحفوظة...</option>';status.textContent='';
+ try{
+  const {data,error}=await SB.from('months').select('key,n,saved_at').order('key',{ascending:false});
+  if(error)throw error;
+  const rows=data||[];
+  sel.innerHTML='<option value="">اختار Payroll قديم</option>'+rows.map(x=>`<option value="${String(x.key).replace(/&/g,'&amp;').replace(/\"/g,'&quot;')}">Payroll ${x.key}${x.n!=null?' — '+x.n+' موظف':''}</option>`).join('');
+  status.textContent=rows.length?`عدد الشهور المحفوظة: ${rows.length}`:'لا توجد مرتبات محفوظة حتى الآن.';
+ }catch(err){sel.innerHTML='<option value="">تعذر تحميل الشهور</option>';status.textContent='تعذر تحميل الشهور المحفوظة: '+(err.message||err);}
+}
+$('openOldPayroll').addEventListener('click',async()=>{
+ const key=$('oldPayrollSelect').value;
+ if(!key){$('oldPayrollStatus').textContent='اختار شهر محفوظ الأول.';return;}
+ if((D.s.length||D.d.length)&&!confirm('فتح Payroll قديم هيستبدل البيانات المعروضة حاليًا. هل تريد المتابعة؟'))return;
+ await openMonth(key);
+});
 $('payrollMonthSelect').addEventListener('change',async e=>{const key=e.target.value;if(!key)return;if(key===activePayrollMonth){$('mkey').value=key;return;}if((D.s.length||D.d.length)&&!confirm('فتح شهر آخر هيستبدل البيانات المعروضة بالـ Payroll المحفوظ. متابعة؟')){e.target.value=activePayrollMonth||'';return;}await openMonth(key);await loadPayrollMonthOptions();});
 async function showMonths(){const p=$('mp');if(!p.classList.contains('hide')){p.classList.add('hide');return}
  p.classList.remove('hide');p.textContent='جاري التحميل...';
@@ -773,7 +799,7 @@ const SB=(window.supabase&&/^https?:/.test(SUPABASE_URL))?window.supabase.create
 async function afterLogin(){const {data,error}=await SB.from('masters').select('code,data');if(error){flash('القراءة فشلت: '+error.message);return}
  MAST=Object.fromEntries(data.map(r=>[r.code,r.data]));DB=true;
  $('login').classList.add('hide');$('drop').classList.remove('hide');$('out').classList.remove('hide');
- ['months','months0','saveM','saveP','exportAll'].forEach(i=>$(i).classList.remove('hide'));$('drop').classList.remove('hide');$('payrollSetup').classList.remove('hide');$('uploadSetup').classList.add('hide');try{const x=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');if(x&&x.D&&(x.D.s.length||x.D.d.length))$('resumeDraft').classList.remove('hide')}catch(_){}flash('متصل بقاعدة البيانات — ابدأ Payroll جديد أو استكمل المسودة السابقة')}
+ ['months','months0','saveM','saveP','exportAll'].forEach(i=>$(i).classList.remove('hide'));$('drop').classList.remove('hide');$('payrollSetup').classList.remove('hide');$('uploadSetup').classList.add('hide');loadOldPayrollOptions();try{const x=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');if(x&&x.D&&(x.D.s.length||x.D.d.length))$('resumeDraft').classList.remove('hide')}catch(_){}flash('متصل بقاعدة البيانات — ابدأ Payroll جديد أو استكمل المسودة السابقة')}
 const ready=(async()=>{if(!SB){flash('لسه لازم تحط رابط ومفتاح Supabase في أول السكريبت (اقرا README.md). لحد وقتها الحساب شغال بدون حفظ.');return}
  $('drop').classList.add('hide');const {data}=await SB.auth.getSession();if(data.session)await afterLogin();else $('login').classList.remove('hide')})();
 $('lg').addEventListener('click',async()=>{const {error}=await SB.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error){$('lerr').textContent='الإيميل أو الباسورد غلط';return}$('lerr').textContent='';await afterLogin()});
