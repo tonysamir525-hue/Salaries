@@ -185,7 +185,7 @@ tr.diff td{background:var(--badbg)}
     <input id="q" type="search" placeholder="بحث بالاسم أو الكود">
     <select id="br"></select>
     <button class="ghost" id="again" type="button">رفع شيت آخر</button><button class="ghost" id="ordersImportBtn" type="button">استيراد عدد الأوردرات</button><input id="ordersImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="tripsImportBtn" type="button">استيراد عدد التحويلات</button><input id="tripsImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="penaltiesImportBtn" type="button">استيراد الجزاءات</button><input id="penaltiesImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide">
-    <input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button><button class="ghost hide" id="exportAll" type="button">تصدير كل البيانات Excel</button>
+    <label for="payrollMonthSelect">Payroll المفتوح</label><select id="payrollMonthSelect" aria-label="اختيار Payroll"><option value="">اختار شهر محفوظ</option></select><input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button><button class="ghost hide" id="exportAll" type="button">تصدير كل البيانات Excel</button>
   </div>
   <div class="set">
     <label>المقسوم عليه (المساعدين) <input id="div" type="number" value="26"></label>
@@ -300,9 +300,9 @@ function applyAtt(o){
     if(r.w!=null){w+=r.w;pr.add(r.d)}
     if(r.l>thr&&!(ex&&/Excused/.test(r.s)))l+=r.l;
     if(/Absent without permission/.test(r.s))ab.add(r.d);
-    if(/Public Holiday/.test(r.s))ph.add(r.d);
+    if(/Public Holiday/i.test(r.s)&&r.w!=null)ph.add(r.d);
   }
-  o.h=w/60;o.late=l/60;o.days=pr.size;o.abs=[...ab].filter(d=>!pr.has(d)).length;o.hol=Math.max(0,hd-ph.size);
+  o.h=w/60;o.late=l/60;o.days=pr.size;o.abs=[...ab].filter(d=>!pr.has(d)).length;o.hol=ph.size;
 }
 ['input','change'].forEach(ev=>['thr','hd','exc'].forEach(id=>$(id).addEventListener(ev,()=>{if(MODE==='att'){D.s.concat(D.d).forEach(applyAtt);draw()}scheduleDraft()})));
 function warns(o){
@@ -423,7 +423,7 @@ $('startPayroll').addEventListener('click',()=>{
   const key=$('newMonth').value;if(!key)return flash('اختار شهر المرتب الأول.');
   if((D.s.length||D.d.length)&&!window.confirm('بدء Payroll جديد هيمسح بيانات المسودة الحالية من الشاشة. هل تريد المتابعة؟'))return;
   D={s:[],d:[]};cur='s';MODE='pay';workflowStage=0;activePayrollMonth=key;
-  $('mkey').value=key;$('importReview').classList.add('hide');$('err').classList.add('hide');
+  $('mkey').value=key;activePayrollMonth=key;loadPayrollMonthOptions();$('importReview').classList.add('hide');$('err').classList.add('hide');
   $('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI();
   $('file').click();
 });
@@ -746,15 +746,20 @@ $('penaltiesImportFile').addEventListener('change',e=>{
   reader.readAsArrayBuffer(file);
 });
 
+async function loadPayrollMonthOptions(){
+ const sel=$('payrollMonthSelect');if(!sel)return;const current=activePayrollMonth||$('mkey').value||'';
+ try{const {data,error}=await SB.from('months').select('key').order('key',{ascending:false});if(error)throw error;const keys=[...new Set([current,...(data||[]).map(x=>x.key)].filter(Boolean))];sel.innerHTML='<option value="">اختار شهر محفوظ</option>'+keys.map(k=>`<option value="${k}">Payroll ${k}${k===current?' (الحالي)':''}</option>`).join('');sel.value=current&&keys.includes(current)?current:'';}catch(e){if(current){sel.innerHTML=`<option value="${current}">Payroll ${current} (الحالي)</option>`;sel.value=current;}}
+}
+$('payrollMonthSelect').addEventListener('change',async e=>{const key=e.target.value;if(!key)return;if(key===activePayrollMonth){$('mkey').value=key;return;}if((D.s.length||D.d.length)&&!confirm('فتح شهر آخر هيستبدل البيانات المعروضة بالـ Payroll المحفوظ. متابعة؟')){e.target.value=activePayrollMonth||'';return;}await openMonth(key);await loadPayrollMonthOptions();});
 async function showMonths(){const p=$('mp');if(!p.classList.contains('hide')){p.classList.add('hide');return}
  p.classList.remove('hide');p.textContent='جاري التحميل...';
  const {data,error}=await SB.from('months').select('key,n,total').order('key',{ascending:false});
  if(error){p.textContent='التحميل فشل';return}
- p.innerHTML=data.length?data.map(x=>`<div class="rw"><span>${x.key} - ${x.n} موظف - الإجمالي ${fmt(+x.total||0)}</span><button class="ghost" data-open="${x.key}" type="button">فتح</button></div>`).join(''):'مفيش شهور محفوظة لسه.'}
+ p.innerHTML=data.length?data.map(x=>`<div class="rw"><span>${x.key} - ${x.n} موظف - الإجمالي ${fmt(+x.total||0)}</span><button class="ghost" data-open="${x.key}" type="button">فتح</button></div>`).join(''):'مفيش شهور محفوظة لسه.';await loadPayrollMonthOptions()}
 async function openMonth(key){const {data,error}=await SB.from('months').select('data').eq('key',key).single();if(error)return fail(error);const x=data.data;
  const fix=r=>{for(const [k] of COLS[r.t])if(k!=='pm'&&typeof r[k]!=='number')r[k]=0;r.pm=r.pm||'';return r};
  const L=x.rows.map(r=>fix({...r}));D={s:L.filter(o=>o.t==='s'),d:L.filter(o=>o.t==='d')};
- MODE='saved';workflowStage=4;activePayrollMonth=key;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI();if(x.div){S.div=x.div;$('div').value=x.div}$('mkey').value=key;cur=D.s.length?'s':'d';
+ MODE='saved';workflowStage=4;activePayrollMonth=key;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI();if(x.div){S.div=x.div;$('div').value=x.div}$('mkey').value=key;await loadPayrollMonthOptions();cur=D.s.length?'s':'d';
  $('attset').classList.add('hide');$('mp').classList.add('hide');$('drop').classList.add('hide');$('app').classList.remove('hide');render();scheduleDraft();flash('مفتوح شهر '+key)}
 $('saveM').addEventListener('click',saveMonth);$('saveP').addEventListener('click',saveAll);
 $('months').addEventListener('click',showMonths);$('months0').addEventListener('click',showMonths);
