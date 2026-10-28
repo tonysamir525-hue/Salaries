@@ -143,6 +143,7 @@ tr.diff td{background:var(--badbg)}
     </div>
   </div>
   <div class="topbar-tools">
+    <button class="ghost" id="homeBtn" type="button">⌂ الصفحة الرئيسية</button>
     <button class="ghost" id="themeToggle" type="button" aria-label="تغيير المظهر">🌙 الوضع الداكن</button>
     <div id="st" class="sub" role="status" aria-live="polite"></div>
     <button class="ghost hide" id="out" type="button">تسجيل خروج</button>
@@ -360,7 +361,27 @@ $('tabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(t){cur=t;$(
 $('q').addEventListener('input',draw);$('br').addEventListener('change',draw);
 $('div').addEventListener('input',e=>{S.div=num(e.target.value)||26;draw();scheduleDraft()});
 
-$('again').addEventListener('click',()=>{$('app').classList.add('hide');$('drop').classList.remove('hide');$('file').value=''});
+$('again').addEventListener('click',()=>{$('app').classList.add('hide');$('drop').classList.remove('hide');$('uploadSetup').classList.remove('hide');$('payrollSetup').classList.add('hide');$('file').value='';updateWorkflowUI();});
+// زر الصفحة الرئيسية يعرض بيانات الـ Payroll المفتوح حاليًا، ولا يبدأ شهرًا جديدًا.
+$('homeBtn').addEventListener('click',()=>{
+  $('det').classList.add('hide');
+  $('importReview').classList.add('hide');
+  $('err').classList.add('hide');
+  $('mp').classList.add('hide');
+  if(D.s.length||D.d.length){
+    cur=D.s.length?'s':'d';
+    $('drop').classList.add('hide');
+    $('app').classList.remove('hide');
+    $('mkey').value=activePayrollMonth||$('mkey').value;
+    render();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }else{
+    $('app').classList.add('hide');
+    $('drop').classList.remove('hide');
+    $('payrollSetup').classList.remove('hide');
+    $('uploadSetup').classList.add('hide');
+  }
+});
 function go(f){
   $('err').classList.add('hide');
   const r=new FileReader();
@@ -379,10 +400,14 @@ function updateWorkflowUI(){
   const names=WORKFLOW_NAMES;
   $('workflowSteps').innerHTML=names.map((n,i)=>`<button type="button" class="tag workflow-step ${i<workflowStage?'ok':i===workflowStage?'w':''}" data-stage="${i}" aria-current="${i===workflowStage?'step':'false'}" style="padding:7px 12px;border:1px solid var(--line);cursor:pointer;background:${i===workflowStage?'var(--soft)':'var(--card)'};color:var(--text)">${i<workflowStage?'✓ ':i===workflowStage?'▶ ':''}${i+1}. ${n}</button>`).join('');
   $('workflowSteps').querySelectorAll('[data-stage]').forEach(b=>b.addEventListener('click',()=>{
-    workflowStage=Number(b.dataset.stage);updateWorkflowUI();
-    $('importReview').classList.remove('hide');
-    $('importReview').scrollIntoView({behavior:'smooth',block:'nearest'});
-    $('pick').focus({preventScroll:true});
+    const stage=Number(b.dataset.stage);
+    workflowStage=stage;
+    updateWorkflowUI();
+    showImportReview(`الخطوة ${stage+1}: ${WORKFLOW_NAMES[stage]}`, 'اختار ملف الشيت من الزر الظاهر تحت. بعد رفعه هتظهر هنا نتيجة المطابقة والأخطاء.');
+    $('uploadSetup').scrollIntoView({behavior:'smooth',block:'start'});
+    // كل زر مرحلة يفتح مباشرةً نافذة اختيار ملف الشيت الخاص بها.
+    const inputId=['file','penaltiesImportFile','ordersImportFile','tripsImportFile'][stage];
+    if(inputId) $(inputId).click();
   }));
   const title=workflowStage>=4?'اكتملت خطوات الاستيراد':`الخطوة ${workflowStage+1}: رفع ${names[workflowStage]}`;
   $('uploadTitle').textContent=title;$('pick').textContent=workflowStage===0?'اختيار شيت الداتا الكبير':`اختيار ${names[workflowStage]}`;
@@ -403,8 +428,13 @@ $('startPayroll').addEventListener('click',()=>{
   $('file').click();
 });
 $('resumeDraft').addEventListener('click',()=>{if(restoreDraft()){activePayrollMonth=$('mkey').value||activePayrollMonth;$('payrollSetup').classList.add('hide');$('uploadSetup').classList.remove('hide');updateWorkflowUI()}else flash('مفيش مسودة سابقة قابلة للاستكمال.')});
-$('pick').addEventListener('click',()=>{if(workflowStage===0)$('file').click();else if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();else flash('اكتملت خطوات الاستيراد. تقدر تحفظ الشهر الآن.');});
-$('nextStepBtn').addEventListener('click',()=>{if(workflowStage===0)$('file').click();else if(workflowStage===1)$('penaltiesImportFile').click();else if(workflowStage===2)$('ordersImportFile').click();else if(workflowStage===3)$('tripsImportFile').click();});
+function openWorkflowUpload(){
+  const inputId=['file','penaltiesImportFile','ordersImportFile','tripsImportFile'][workflowStage];
+  if(inputId){const input=$(inputId);input.value='';input.click();}
+  else flash('اكتملت خطوات الاستيراد. تقدر تحفظ الشهر الآن.');
+}
+$('pick').addEventListener('click',openWorkflowUpload);
+$('nextStepBtn').addEventListener('click',openWorkflowUpload);
 $('file').addEventListener('change',e=>e.target.files[0]&&go(e.target.files[0]));
 const dz=$('drop');
 ['dragover','dragenter'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('over')}));
@@ -422,10 +452,10 @@ function detailFieldOrder(){
  try{const saved=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(saved))return base;return saved.map(k=>base.find(c=>c[0]===k)).filter(Boolean).concat(base.filter(c=>!saved.includes(c[0])))}catch(_){return base}
 }
 function saveDetailFieldOrder(){try{localStorage.setItem('payroll-field-order-'+cur,JSON.stringify([...$('det').querySelectorAll('.field-row')].map(r=>r.dataset.field)))}catch(_){}}
-function renderDet(){const o=D[cur][dl[dp]];$('det').innerHTML=`<div class="bar"><button class="ghost" type="button" data-n="back">رجوع للجدول</button><button class="ghost" type="button" data-n="-1" ${dp?'':'disabled'}>الموظف السابق</button><button class="ghost" type="button" data-n="1" ${dp<dl.length-1?'':'disabled'}>الموظف التالي</button><span>${dp+1} من ${dl.length}</span></div><h2>${o.name}</h2><p class="sub">${o.branch||'بدون فرع'} - كود ${o.code||'—'}</p><div class="big"><span>إجمالي المرتب</span><b id="bigtot"></b></div><div class="cardx" id="edit-fields">`+detailFieldOrder().map(c=>rowD(o,c)).join('')+`</div><div class="cardx" id="brk"></div><p class="sub" style="text-align:center">تقدر تغيّر ترتيب الخانات بالسحب من علامة ⠿ على الشمال.</p>`;brk()}
+function renderDet(){const o=D[cur][dl[dp]];const approved=!!o.salaryApproved;$('det').innerHTML=`<div class="bar"><button class="ghost" type="button" data-n="back">رجوع للجدول</button><button class="ghost" type="button" data-n="-1" ${dp?'':'disabled'}>الموظف السابق</button><button class="ghost" type="button" data-n="1" ${dp<dl.length-1?'':'disabled'}>الموظف التالي</button><span>${dp+1} من ${dl.length}</span></div><h2>${o.name}</h2><p class="sub">${o.branch||'بدون فرع'} - كود ${o.code||'—'}</p><div class="bar" style="justify-content:center"><button type="button" id="approveSalaryBtn" style="background:${approved?'#16803c':'var(--acc)'};border-color:${approved?'#16803c':'var(--acc)'}">${approved?'✓ تمّت مراجعة واعتماد الراتب':'اعتماد الراتب'}</button><span id="approvalStatus" style="font-weight:700;color:${approved?'#16803c':'var(--mute)'}">${approved?'✓ معتمد':'لم تتم المراجعة بعد'}</span></div><div class="big"><span>إجمالي المرتب</span><b id="bigtot"></b></div><div class="cardx" id="edit-fields">`+detailFieldOrder().map(c=>rowD(o,c)).join('')+`</div><div class="cardx" id="brk"></div><p class="sub" style="text-align:center">تقدر تغيّر ترتيب الخانات بالسحب من علامة ⠿ على الشمال.</p>`;brk()}
 function handleDetailEdit(e){const k=e.target.dataset.k;if(!k)return;setF(D[cur][dl[dp]],k,e.target.value);if(k==='branch'){const o=D[cur][dl[dp]];$('det').querySelector('.sub').textContent=(o.branch||'بدون فرع')+' - كود '+(o.code||'—');}brk()}
 $('det').addEventListener('input',handleDetailEdit);$('det').addEventListener('change',handleDetailEdit);
-$('det').addEventListener('click',e=>{const n=e.target.dataset.n;if(!n)return;if(n==='back'){$('det').classList.add('hide');$('app').classList.remove('hide');draw();return}dp+=+n;renderDet()});
+$('det').addEventListener('click',e=>{const approve=e.target.closest('#approveSalaryBtn');if(approve){const o=D[cur][dl[dp]];o.salaryApproved=true;o.salaryApprovedAt=new Date().toISOString();scheduleDraft();renderDet();return}const n=e.target.dataset.n;if(!n)return;if(n==='back'){$('det').classList.add('hide');$('app').classList.remove('hide');draw();return}dp+=+n;renderDet()});
 let draggedField=null;
 $('det').addEventListener('dragstart',e=>{const row=e.target.closest('.field-row');if(!row)return;draggedField=row;row.classList.add('dragging');if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',row.dataset.field)}});
 $('det').addEventListener('dragover',e=>{const row=e.target.closest('.field-row');if(!draggedField||!row||row===draggedField)return;e.preventDefault();$('det').querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));row.classList.add('drop-target')});
