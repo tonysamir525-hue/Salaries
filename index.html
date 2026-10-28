@@ -378,7 +378,7 @@ function updateWorkflowUI(){
   const names=WORKFLOW_NAMES;
   $('workflowSteps').innerHTML=names.map((n,i)=>`<span class="tag ${i<workflowStage?'ok':i===workflowStage?'w':''}" style="padding:5px 10px;border:1px solid var(--line)">${i<workflowStage?'✓ ':i===workflowStage?'▶ ':''}${i+1}. ${n}</span>`).join('');
   const title=workflowStage>=4?'اكتملت خطوات الاستيراد':`الخطوة ${workflowStage+1}: رفع ${names[workflowStage]}`;
-  $('uploadTitle').textContent=title;$('pick').textContent=workflowStage===0?'اختيار شيت الداتا الكبير':`اختيار شيت ${names[workflowStage]}`;
+  $('uploadTitle').textContent=title;$('pick').textContent=workflowStage===0?'اختيار شيت الداتا الكبير':`اختيار ${names[workflowStage]}`;
   $('pick').disabled=workflowStage>=4;
   $('uploadPeriod').textContent=monthPeriod(activePayrollMonth);
 }
@@ -697,7 +697,7 @@ $('penaltiesImportFile').addEventListener('change',e=>{
       if(different.length&&!window.confirm('بعض الأسماء مختلفة رغم تطابق الكود. هل تؤكد تحديثها؟\n\n'+different.slice(0,20).map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`).join('\n')))return;
       matched.forEach(x=>{x.emp.penalties=x.days});
       cur=matched.some(x=>x.emp.t==='s')?'s':'d';$('br').value='';render();scheduleDraft();
-      const issueText=[`تم تحديث ${matched.length} موظف.`,`أكواد غير موجودة: ${unknown.length}`,`أكواد مكررة: ${ambiguous.length}`,`أسماء مختلفة: ${different.length}`,...different.map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`),...unknown.map(x=>`كود غير موجود: ${x.code} — ${x.name||'بدون اسم'}`),...ambiguous.map(x=>`كود مكرر: ${x.code}`)].join('\n');finishWorkflowStep(1,'نتيجة استيراد الجزاءات',issueText);flash(`تم استيراد أيام الجزاءات لـ ${matched.length} موظف. تم تجاهل ${unknown.length} كود غير مطابق و${ambiguous.length} كود مكرر.`);
+      const issueText=[`تم تحديث ${matched.length} موظف.`,`أكواد غير موجودة: ${unknown.length}`,`أكواد مكررة: ${ambiguous.length}`,`أسماء مختلفة: ${different.length}`,...different.map(x=>`${x.code}: النظام «${x.emp.name}» / التقرير «${x.name}»`),...unknown.map(x=>`كود غير موجود: ${x.code} — ${x.name||'بدون اسم'}`),...ambiguous.map(x=>`كود مكرر: ${x.code}`)].join('\n');finishWorkflowStep(2,'نتيجة استيراد الجزاءات',issueText);flash(`تم استيراد أيام الجزاءات لـ ${matched.length} موظف. تم تجاهل ${unknown.length} كود غير مطابق و${ambiguous.length} كود مكرر.`);
     }catch(err){flash('تعذر استيراد الجزاءات: '+(err.message||err));}
     finally{e.target.value='';}
   };
