@@ -196,7 +196,7 @@ tr.diff td{background:var(--badbg)}
     <select id="alertFilter" aria-label="فلتر التنبيهات"><option value="">كل الموظفين</option><option value="alerts">اللي عليهم تنبيه</option><option value="noalerts">من غير تنبيه</option></select>
     <select id="pmFilter" aria-label="فلتر طريقة القبض"><option value="">كل طرق القبض</option></select>
     <button class="ghost" id="again" type="button">رفع شيت آخر</button><button class="ghost" id="ordersImportBtn" type="button">استيراد عدد الأوردرات</button><input id="ordersImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="tripsImportBtn" type="button">استيراد عدد التحويلات</button><input id="tripsImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide"><button class="ghost" id="penaltiesImportBtn" type="button">استيراد الجزاءات</button><input id="penaltiesImportFile" type="file" accept=".xlsx,.xls,.xlsm,.csv" class="hide">
-    <label for="payrollMonthSelect">Payroll المفتوح</label><select id="payrollMonthSelect" aria-label="اختيار Payroll"><option value="">اختار شهر محفوظ</option></select><input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button><button class="ghost hide" id="exportAll" type="button">تصدير كل البيانات Excel</button>
+    <label for="payrollMonthSelect">Payroll المفتوح</label><select id="payrollMonthSelect" aria-label="اختيار Payroll"><option value="">اختار شهر محفوظ</option></select><input id="mkey" type="month" aria-label="الشهر"><button class="btn hide" id="saveM" type="button">حفظ الشهر</button><button class="ghost hide" id="saveP" type="button">حفظ الأسعار وطرق القبض</button><button class="ghost hide" id="months" type="button">الشهور المحفوظة</button><button class="ghost hide" id="exportAll" type="button">تصدير كل البيانات Excel</button><button class="ghost hide" id="manageEmployeesBtn" type="button">إدارة الموظفين</button><button class="ghost hide" id="exportSummaryBtn" type="button">تحميل شيت الإجمالي</button>
   </div>
   <div class="set hide">
     <label>المقسوم عليه (المساعدين) <input id="div" type="number" value="26"></label>
@@ -206,6 +206,20 @@ tr.diff td{background:var(--badbg)}
   <div class="wrap"><table id="tbl"></table></div>
 </section>
 <section id="det" class="hide"></section>
+<section id="employeeManagement" class="cardx hide" style="max-width:none">
+ <div class="bar"><h2 style="margin:0">إدارة الموظفين</h2><button class="ghost" id="managementBack" type="button">الرجوع للمرتبات</button></div>
+ <p class="sub">تعديل بيانات الموظفين أو إضافتهم أو تعطيلهم. التعطيل يمنع ظهور الموظف في Payroll جديد ويحافظ على سجلاته القديمة.</p>
+ <form id="employeeForm" class="bar" style="align-items:end">
+  <label>الكود<br><input id="empCode" required></label>
+  <label>الاسم الكامل<br><input id="empName" required></label>
+  <label>النوع<br><select id="empType"><option value="s">مساعد</option><option value="d">مندوب</option></select></label>
+  <label>اسم الصيدلية / الفرع<br><input id="empBranch"></label>
+  <label>طريقة القبض<br><select id="empPm"><option value="">—</option><option>Cash</option><option>Instapay</option><option>Dopay</option><option>Paymint</option></select></label>
+  <button type="submit">حفظ الموظف</button><button type="button" class="ghost" id="empClear">موظف جديد / تفريغ</button>
+ </form>
+ <div class="wrap"><table style="min-width:850px"><thead><tr><th>الكود</th><th>الاسم</th><th>النوع</th><th>الصيدلية / الفرع</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody id="employeesBody"></tbody></table></div>
+ <p id="employeeManagementStatus" class="sub"></p>
+</section>
 </main>
 <script>
 // ضع هنا بيانات مشروع Supabase (اقرا README.md)
@@ -280,6 +294,8 @@ function load(buf){
     if(hd.includes('المرتب الساعات'))D.d=parse(wb.Sheets[n],'d');
     else if(hd.includes('قيمة الساعه'))D.s=parse(wb.Sheets[n],'s');
   }
+  // الموظفون المعطلون يُستبعدون من Payroll الجديد فقط؛ الشهور المحفوظة لا تتأثر.
+  D.s=D.s.filter(o=>MAST[o.code]?.active!==false);D.d=D.d.filter(o=>MAST[o.code]?.active!==false);
   if(!D.s.length&&!D.d.length)throw new Error('مش لاقي شيت حضور ولا شيت مرتبات. اتأكد إن العناوين في الصف الأول زي الملف الأصلي.');
   if(activePayrollMonth)$('mkey').value=activePayrollMonth;
   cur=D.s.length?'s':'d';$('attset').classList.remove('hide');
@@ -496,7 +512,7 @@ function fld(o,k,i,t){const a=i===''?` id="f${k}"`:` data-i="${i}"`;
  return `<input type="number" step="${d?'any':'1'}" value="${v}" data-k="${k}"${a} aria-label="${k}">`}
 function cellT(o,[k,l,t],i){return t==='n'?`<td><a href="#" data-d="${i}">${esc(o.name)}</a></td>`:t==='x'?`<td>${esc(o.code)}</td>`:t[0]==='r'?`<td data-o="${k}">${fld(o,k,i,t)}</td>`:`<td>${fld(o,k,i,t)}</td>`}
 function rowD(o,[k,l,t]){const v=t==='n'?esc(o.name):t==='x'?esc(o.code):fld(o,k,'',t);return `<div class="rw field-row" draggable="true" data-field="${k}"><span class="drag-handle" aria-hidden="true">⠿</span><label for="f${k}">${l}</label>${t[0]==='r'?`<b data-o="${k}">${v}</b>`:v}</div>`}
-function mast(o){const m={t:o.t,code:o.code,name:o.name,branch:o.branch,pm:o.pm||'',ins:num(o.ins)};if(o.t==='s')m.rate=o.rate;else{m.hr=o.hr;m.tr=o.tr;m.or=o.or}return m}
+function mast(o){const m={t:o.t,code:o.code,name:o.name,branch:o.branch,pm:o.pm||'',ins:num(o.ins),active:o.active!==false};if(o.t==='s')m.rate=o.rate;else{m.hr=o.hr;m.tr=o.tr;m.or=o.or}return m}
 function applyMasters(){for(const o of D.s.concat(D.d)){const m=MAST[o.code];if(m&&m.t===o.t)for(const k of MK)if(m[k]!=null)o[k]=m[k]}}
 function setF(o,k,v){o[k]=(k==='pm'||k==='branch')?v:num(v);scheduleDraft();if(MK.has(k)&&MODE!=='pay'&&DB&&CAN){clearTimeout(tm[o.code]);tm[o.code]=setTimeout(()=>save1(o),800)}}
 const fail=e=>flash('فشل ('+(e.message||e.code)+')');
@@ -533,6 +549,36 @@ async function exportAllData(){
  }catch(e){fail(e)}finally{btn.disabled=false;btn.textContent=old}
 }
 $('exportAll').addEventListener('click',exportAllData);
+
+
+// إدارة الموظفين: تعديل masters فقط، مع إبقاء بيانات الشهور القديمة كما هي.
+function showEmployeeManagement(){
+ $('app').classList.add('hide');$('det').classList.add('hide');$('drop').classList.add('hide');$('importReview').classList.add('hide');$('employeeManagement').classList.remove('hide');renderEmployeeManagement();window.scrollTo(0,0);
+}
+function renderEmployeeManagement(){
+ const list=Object.values(MAST||{}).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ar'));
+ $('employeesBody').innerHTML=list.map(m=>`<tr><td>${esc(m.code||'')}</td><td>${esc(m.name||'')}</td><td>${m.t==='d'?'مندوب':'مساعد'}</td><td>${esc(m.branch||'')}</td><td>${m.active===false?'معطل':'نشط'}</td><td><button type="button" class="ghost" data-emp-edit="${esc(m.code)}">تعديل</button> <button type="button" class="ghost" data-emp-toggle="${esc(m.code)}">${m.active===false?'تفعيل':'تعطيل'}</button> <button type="button" data-emp-delete="${esc(m.code)}" style="background:var(--bad);border-color:var(--bad)">حذف نهائي</button></td></tr>`).join('');
+ $('employeeManagementStatus').textContent=`إجمالي الموظفين المسجلين: ${list.length}`;
+}
+function clearEmployeeForm(){ $('empCode').value='';$('empName').value='';$('empType').value='s';$('empBranch').value='';$('empPm').value='';$('empCode').disabled=false; }
+$('manageEmployeesBtn').addEventListener('click',showEmployeeManagement);
+$('managementBack').addEventListener('click',()=>{$('employeeManagement').classList.add('hide');$('drop').classList.add('hide');$('app').classList.remove('hide');render();});
+$('empClear').addEventListener('click',clearEmployeeForm);
+$('employeesBody').addEventListener('click',async e=>{
+ const edit=e.target.closest('[data-emp-edit]'),toggle=e.target.closest('[data-emp-toggle]'),del=e.target.closest('[data-emp-delete]');const code=(edit||toggle||del)?.dataset.empEdit||(toggle?.dataset.empToggle)||(del?.dataset.empDelete);if(!code)return;const m=MAST[code];if(!m)return;
+ if(edit){$('empCode').value=code;$('empCode').disabled=true;$('empName').value=m.name||'';$('empType').value=m.t||'s';$('empBranch').value=m.branch||'';$('empPm').value=m.pm||'';window.scrollTo({top:0,behavior:'smooth'});return;}
+ if(toggle){const next={...m,active:m.active===false?true:false};if(!confirm(`${next.active===false?'تعطيل':'تفعيل'} الموظف ${m.name}؟`))return;const {error}=await SB.from('masters').upsert({code,data:next,updated_at:new Date().toISOString()});if(error){fail(error);return;}MAST[code]=next;renderEmployeeManagement();flash(next.active===false?'تم تعطيل الموظف':'تم تفعيل الموظف');return;}
+ if(del){if(!confirm(`حذف بيانات الموظف الأساسية ${m.name} نهائيًا من masters؟\nسيتم الاحتفاظ بكشوف المرتبات الشهرية السابقة، لكن لا يمكن التراجع عن حذف البيانات الأساسية.`))return;const {error}=await SB.from('masters').delete().eq('code',code);if(error){fail(error);return;}delete MAST[code];renderEmployeeManagement();flash('تم حذف البيانات الأساسية. سجلات الشهور القديمة لم تُحذف.');}
+});
+$('employeeForm').addEventListener('submit',async e=>{e.preventDefault();if(!DB||!SB){flash('لا يوجد اتصال بقاعدة البيانات');return;}const code=$('empCode').value.trim(),name=$('empName').value.trim();if(!code||!name)return;const old=MAST[code]||{};const m={...old,code,name,t:$('empType').value,branch:$('empBranch').value.trim(),pm:$('empPm').value,active:old.active!==false};const {error}=await SB.from('masters').upsert({code,data:m,updated_at:new Date().toISOString()});if(error){fail(error);return;}MAST[code]=m;clearEmployeeForm();renderEmployeeManagement();flash(old.name?'تم تحديث بيانات الموظف':'تمت إضافة الموظف');});
+async function exportSummarySheet(){
+ const all=D.s.concat(D.d);if(!all.length){flash('افتح Payroll أو استورد شيت الداتا أولًا');return;}all.forEach(calc);
+ const groups=new Map();for(const o of all){const branch=String(o.branch||'بدون اسم صيدلية').trim();if(!groups.has(branch))groups.set(branch,[]);groups.get(branch).push(o);}
+ const aoa=[];for(const [branch,items] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ar'))){aoa.push(['اسم الصيدلية',branch,'']);aoa.push(['اسم الصيدلية','الموظف','إجمالي المرتب']);for(const o of items)aoa.push([branch,o.name,Number(o.tot)||0]);aoa.push(['الإجمالي',items.length,items.reduce((n,o)=>n+(Number(o.tot)||0),0)]);aoa.push(['','','']);}
+ const summary=[['اسم الصيدلية','إجمالي عدد الموظفين','إجمالي الرواتب']];for(const [branch,items] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ar')))summary.push([branch,items.length,items.reduce((n,o)=>n+(Number(o.tot)||0),0)]);summary.push(['الإجمالي العام',all.length,all.reduce((n,o)=>n+(Number(o.tot)||0),0)]);
+ const wb=XLSX.utils.book_new(),ws1=XLSX.utils.aoa_to_sheet(aoa),ws2=XLSX.utils.aoa_to_sheet(summary);ws1['!cols']=[{wch:24},{wch:28},{wch:20}];ws2['!cols']=[{wch:30},{wch:24},{wch:22}];XLSX.utils.book_append_sheet(wb,ws1,'تفصيل الموظفين');XLSX.utils.book_append_sheet(wb,ws2,'توتال الصيدليات');XLSX.writeFile(wb,`شيت_الإجمالي_${$('mkey').value||'Payroll'}.xlsx`);flash('تم تحميل شيت الإجمالي');
+}
+$('exportSummaryBtn').addEventListener('click',exportSummarySheet);
 
 function showImportReview(title,lines,kind='ok'){
  const box=$('importReview');box.classList.remove('hide');
@@ -802,7 +848,7 @@ const SB=(window.supabase&&/^https?:/.test(SUPABASE_URL))?window.supabase.create
 async function afterLogin(){const {data,error}=await SB.from('masters').select('code,data');if(error){flash('القراءة فشلت: '+error.message);return}
  MAST=Object.fromEntries(data.map(r=>[r.code,r.data]));DB=true;
  $('login').classList.add('hide');$('drop').classList.remove('hide');$('out').classList.remove('hide');
- ['months','months0','saveM','saveP','exportAll'].forEach(i=>$(i).classList.remove('hide'));$('drop').classList.remove('hide');$('payrollSetup').classList.remove('hide');$('uploadSetup').classList.add('hide');loadOldPayrollOptions();try{const x=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');if(x&&x.D&&(x.D.s.length||x.D.d.length))$('resumeDraft').classList.remove('hide')}catch(_){}flash('متصل بقاعدة البيانات — ابدأ Payroll جديد أو استكمل المسودة السابقة')}
+ ['months','months0','saveM','saveP','exportAll','manageEmployeesBtn','exportSummaryBtn'].forEach(i=>$(i).classList.remove('hide'));$('drop').classList.remove('hide');$('payrollSetup').classList.remove('hide');$('uploadSetup').classList.add('hide');loadOldPayrollOptions();try{const x=JSON.parse(localStorage.getItem(DRAFT_KEY)||'null');if(x&&x.D&&(x.D.s.length||x.D.d.length))$('resumeDraft').classList.remove('hide')}catch(_){}flash('متصل بقاعدة البيانات — ابدأ Payroll جديد أو استكمل المسودة السابقة')}
 const ready=(async()=>{if(!SB){flash('لسه لازم تحط رابط ومفتاح Supabase في أول السكريبت (اقرا README.md). لحد وقتها الحساب شغال بدون حفظ.');return}
  $('drop').classList.add('hide');const {data}=await SB.auth.getSession();if(data.session)await afterLogin();else $('login').classList.remove('hide')})();
 $('lg').addEventListener('click',async()=>{const {error}=await SB.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error){$('lerr').textContent='الإيميل أو الباسورد غلط';return}$('lerr').textContent='';await afterLogin()});
