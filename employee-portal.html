@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#17365d"><title>بوابة الموظفين | Alpha Ceuticals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <style>
+    :root{font-family:Cairo,Tahoma,sans-serif;color:#17243a;background:#f3f6fa;font-synthesis:none}*{box-sizing:border-box}body{margin:0;min-height:100vh}header{background:#17365d;color:white;padding:18px max(20px,calc((100vw - 1000px)/2));box-shadow:0 3px 12px #0f274014}h1{font-size:21px;margin:0}header p{margin:3px 0 0;color:#e1e9f4;font-size:13px}main{max-width:1000px;margin:32px auto;padding:0 18px 48px}.panel{background:#fff;border:1px solid #dbe2ec;border-radius:14px;padding:22px;box-shadow:0 4px 18px #142b460a;margin-bottom:16px}.narrow{max-width:480px;margin:40px auto}.muted{color:#637187}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.row.between{justify-content:space-between}label{font-weight:600}input,select,button{font:inherit;border-radius:8px;padding:9px 12px}input,select{border:1px solid #dbe2ec;background:#fff;color:#17243a}button{border:1px solid #17365d;background:#17365d;color:#fff;font-weight:700;cursor:pointer}button.secondary{background:white;color:#17365d}button:disabled{opacity:.6;cursor:wait}.hide{display:none!important}.error{background:#fde8e8;color:#a61b1b;padding:10px 14px;border-radius:8px;margin-top:12px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:18px 0}.stat{padding:14px;background:#e8eef6;border-radius:10px}.stat span{display:block;color:#637187;font-size:13px}.stat strong{font-size:20px;color:#17365d;overflow-wrap:anywhere}.details{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}.item{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid #dbe2ec}.item span{color:#637187}.empty{text-align:center;padding:38px 12px;color:#637187}.pill{border-radius:999px;background:#e8eef6;padding:3px 10px;color:#17365d;font-size:13px}@media(max-width:520px){main{margin:16px auto;padding:0 12px 32px}.panel{padding:16px}.row .grow{width:100%}}
+  </style>
+</head>
+<body>
+<header><h1>Alpha Ceuticals | بوابة الموظفين</h1><p>عرض مفردات المرتب الشخصية والشهور المعتمدة</p></header>
+<main>
+  <section id="login" class="panel narrow">
+    <h2>تسجيل الدخول</h2><p class="muted">استخدم بيانات الدخول التي سلمها لك مسؤول الموارد البشرية.</p>
+    <form id="loginForm"><p><label for="phone">رقم الموبايل</label><br><input id="phone" type="tel" autocomplete="username" placeholder="+2010xxxxxxxx" required style="width:100%"></p>
+    <p><label for="password">كلمة المرور المؤقتة أو الحالية</label><br><input id="password" type="password" autocomplete="current-password" required style="width:100%"></p>
+    <button id="loginBtn" type="submit" style="width:100%">دخول آمن</button><div id="loginError" class="error hide" role="alert"></div></form>
+  </section>
+  <section id="changePassword" class="panel narrow hide">
+    <h2>تغيير كلمة المرور المؤقتة</h2><p class="muted">اختر كلمة مرور جديدة لا تشاركها مع أحد. لن تظهر قسائمك قبل إتمام التغيير.</p>
+    <form id="changePasswordForm"><p><label for="newPassword">كلمة المرور الجديدة</label><br><input id="newPassword" type="password" minlength="12" autocomplete="new-password" required style="width:100%"></p>
+    <p><label for="confirmPassword">تأكيد كلمة المرور</label><br><input id="confirmPassword" type="password" minlength="12" autocomplete="new-password" required style="width:100%"></p>
+    <button id="changePasswordBtn" type="submit" style="width:100%">حفظ ومتابعة</button><div id="passwordError" class="error hide" role="alert"></div></form>
+  </section>
+  <section id="portal" class="hide">
+    <div class="panel row between"><div><h2 id="welcome" style="margin:0"></h2><p class="muted" style="margin:4px 0 0">تظهر هنا القسائم التي اعتمدها المسؤول وأتاحها لك.</p></div><button id="signOut" class="secondary">تسجيل الخروج</button></div>
+    <div class="panel"><div class="row"><label for="month">الشهر</label><select id="month" class="grow"><option value="">جاري التحميل…</option></select><span id="count" class="pill"></span></div>
+      <div id="slip" class="hide"><div class="stats"><div class="stat"><span>الشهر</span><strong id="sMonth">—</strong></div><div class="stat"><span>الاسم</span><strong id="sName">—</strong></div><div class="stat"><span>إجمالي المستحق</span><strong id="sTotal">—</strong></div><div class="stat"><span>صافي المرتب قبل الحافز</span><strong id="sPay">—</strong></div></div><h3>تفاصيل المرتب</h3><div id="details" class="details"></div></div>
+      <div id="empty" class="empty hide">لا توجد قسيمة معتمدة لهذا الشهر بعد.</div><div id="dataError" class="error hide" role="alert"></div>
+    </div>
+  </section>
+</main>
+<script>
+// Set the public Supabase project URL and anon/publishable key for the existing project.
+const SUPABASE_URL = 'https://reubtwlfjbwqfdbolzgx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJldWJ0d2xmamJ3cWZkYm9semd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMjU0MDMsImV4cCI6MjEwODcwMTQwM30.qwawzY613Rf9xdbqk2Qqg2IHPgJYXN0GmxN9ViC4ZLQ';
+const CONFIGURED = /^https:\/\//.test(SUPABASE_URL) && !SUPABASE_ANON_KEY.includes('PASTE_');
+const $ = id => document.getElementById(id);
+const db = CONFIGURED && window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
+const labels={branch:'الفرع',t:'الفئة',h:'الساعات',days:'أيام الحضور',abs:'غياب بدون إذن',hol:'الإجازات الرسمية',ot:'الساعات الإضافية',late:'التأخيرات',penalties:'أيام الجزاءات',disc:'إجمالي الخصم',rate:'قيمة الساعة',hr:'سعر الساعة',trips:'عدد التحويلات',tr:'سعر التحويلة',orders:'عدد الأوردرات',or:'سعر الأوردر',allow:'العدية',adv:'السلف',sh:'العجز',ins:'التأمينات',bonus:'الحافز',pm:'طريقة القبض'};
+const money=new Intl.NumberFormat('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
+function showError(id,msg){$(id).textContent=msg;$(id).classList.remove('hide')}
+function hide(id){$(id).classList.add('hide')}
+function moneyText(v){return money.format(Number(v)||0)+' ج.م'}
+function logoutUI(){ $('portal').classList.add('hide');$('changePassword').classList.add('hide');$('login').classList.remove('hide');$('password').value=''; }
+function renderSlip(s){if(!s){$('slip').classList.add('hide');$('empty').classList.remove('hide');return}hide('empty');$('slip').classList.remove('hide');$('sMonth').textContent=s.month;$('sName').textContent=s.name;$('sTotal').textContent=moneyText(s.tot);$('sPay').textContent=moneyText(s.pay);const d=$('details');d.replaceChildren();for(const [key,label] of Object.entries(labels)){if(s[key]===undefined||s[key]===null||s[key]==='')continue;const item=document.createElement('div');item.className='item';const l=document.createElement('span');l.textContent=label;const v=document.createElement('strong');v.textContent=key==='t'?(s[key]==='d'?'مندوب':'مساعد'):(key==='pm'?String(s[key]):money.format(Number(s[key])||0));item.append(l,v);d.append(item)}}
+async function loadPayslips(){hide('dataError');$('month').innerHTML='<option value="">جاري تحميل القسائم…</option>';try{const {data,error}=await db.rpc('employee_my_payslips');if(error)throw error;const rows=data||[];$('count').textContent=`${rows.length} قسيمة`;if(!rows.length){$('month').innerHTML='<option value="">لا توجد شهور متاحة</option>';renderSlip(null);return}rows.sort((a,b)=>b.month.localeCompare(a.month));$('month').innerHTML=rows.map((x,i)=>`<option value="${i}">${x.month}</option>`).join('');$('month').onchange=()=>renderSlip(rows[Number($('month').value)]||null);$('month').value='0';renderSlip(rows[0])}catch(e){showError('dataError','تعذر تحميل القسائم. تأكد من إعداد قاعدة البيانات أو تواصل مع مسؤول النظام.');$('month').innerHTML='<option value="">تعذر التحميل</option>';console.error(e)}}
+async function refresh(){if(!db){showError('loginError','أكمل إعداد رابط Supabase والمفتاح العام في ملف البوابة.');return}const {data:{session}}=await db.auth.getSession();if(session){$('login').classList.add('hide');const {data,error}=await db.rpc('employee_my_profile');if(error){$('portal').classList.remove('hide');showError('dataError','تعذر تحميل بيانات الحساب.');return}if(data?.must_change_password){$('changePassword').classList.remove('hide');$('portal').classList.add('hide');return}$('changePassword').classList.add('hide');$('portal').classList.remove('hide');$('welcome').textContent=`مرحبًا، ${data?.name||'بك'}`;await loadPayslips()}else logoutUI()}
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();hide('loginError');if(!db){showError('loginError','البوابة تحتاج إعداد Supabase أولًا.');return}const b=$('loginBtn');b.disabled=true;try{const {error}=await db.auth.signInWithPassword({phone:$('phone').value.trim(),password:$('password').value});if(error)throw error;await refresh()}catch(err){showError('loginError','تعذر الدخول. راجع رقم الموبايل وكلمة المرور مع مسؤول الموارد البشرية.');console.error(err)}finally{b.disabled=false}});
+$('changePasswordForm').addEventListener('submit',async e=>{e.preventDefault();hide('passwordError');const next=$('newPassword').value;if(next.length<12){showError('passwordError','استخدم 12 حرفًا أو أكثر.');return}if(next!==$('confirmPassword').value){showError('passwordError','كلمتا المرور غير متطابقتين.');return}const b=$('changePasswordBtn');b.disabled=true;try{const {error}=await db.auth.updateUser({password:next});if(error)throw error;const {error:doneError}=await db.rpc('employee_complete_password_change');if(doneError)throw doneError;$('newPassword').value='';$('confirmPassword').value='';await refresh()}catch(err){showError('passwordError','تعذر حفظ كلمة المرور. جرّب مرة أخرى أو تواصل مع مسؤول النظام.');console.error(err)}finally{b.disabled=false}});
+$('signOut').addEventListener('click',async()=>{if(db)await db.auth.signOut();logoutUI()});
+refresh();
+</script>
+</body></html>
