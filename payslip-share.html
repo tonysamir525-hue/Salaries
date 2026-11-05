@@ -1,29 +1,8 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17365d">
-<title>مفردات المرتب | Alpha Ceuticals</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<style>
-:root{font-family:Cairo,Tahoma,sans-serif;color:#17243a;background:#f3f6fa;font-synthesis:none}*{box-sizing:border-box}body{margin:0;min-height:100vh}header{background:#17365d;color:white;padding:18px max(20px,calc((100vw - 1000px)/2));box-shadow:0 3px 12px #0f274014}header h1{font-size:21px;margin:0}header p{font-size:13px;color:#e1e9f4;margin:3px 0 0}main{max-width:1000px;margin:28px auto;padding:0 16px 44px}.panel{background:#fff;border:1px solid #dbe2ec;border-radius:14px;padding:20px;box-shadow:0 4px 18px #142b460a;margin-bottom:16px}.login{max-width:480px;margin:42px auto}.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.field label{display:block;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;font:inherit;padding:9px 12px;border:1px solid #dbe2ec;border-radius:8px;background:#fff;color:#17243a}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}button{font:inherit;border:1px solid #17365d;border-radius:8px;padding:9px 15px;background:#17365d;color:#fff;font-weight:700;cursor:pointer}button.secondary{background:white;color:#17365d}button:disabled{opacity:.5;cursor:wait}.muted{color:#637187}.hide{display:none!important}.error{color:#a61b1b;background:#fde8e8;padding:10px 13px;border-radius:8px;margin-top:12px}.slip{max-width:720px;margin:0 auto;background:#fff;border:1px solid #dbe2ec;border-top:6px solid #17365d;border-radius:12px;padding:22px}.sliphead{text-align:center;border-bottom:1px solid #dbe2ec;padding-bottom:14px}.sliphead h2{color:#17365d;margin:0}.sliphead p{margin:3px;color:#637187}.ident{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;margin:15px 0}.ident div,.total{background:#e8eef6;padding:11px;border-radius:9px}.ident span,.total span{display:block;color:#637187;font-size:13px}.ident strong{font-size:17px}.totals{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:14px 0}.total strong{display:block;color:#17365d;font-size:18px;overflow-wrap:anywhere}.section-title{font-size:16px;color:#17365d;margin:18px 0 7px}.details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}.detail{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #edf0f4;padding:7px 2px}.detail span{color:#637187}.detail b{font-variant-numeric:tabular-nums;text-align:left;direction:ltr}.actions{justify-content:center;margin-top:18px}.foot{text-align:center;color:#7a8798;font-size:12px;margin-top:18px}@media(max-width:560px){main{margin:16px auto;padding:0 11px 30px}.panel{padding:15px}.slip{padding:14px}.totals{grid-template-columns:1fr}.details{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
-<header><h1>Alpha Ceuticals | مفردات المرتب</h1><p>صفحة داخلية لمسؤولي الرواتب</p></header>
-<main>
-  <section id="loginPanel" class="panel login"><h2>دخول مسؤول الرواتب</h2><p class="muted">استخدم حساب الإدارة المعتمد.</p><form id="loginForm"><div class="field"><label for="email">البريد الإلكتروني</label><input id="email" type="email" autocomplete="username" required></div><div class="field" style="margin-top:12px"><label for="password">كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required></div><button id="loginBtn" style="width:100%;margin-top:14px">دخول</button><div id="loginError" class="error hide" role="alert"></div></form></section>
-  <section id="appPanel" class="hide">
-    <div class="panel row between"><div><strong id="adminName">مسؤول الرواتب</strong><div class="muted">اختر الشهر ثم الفرع ثم الموظف لعرض القسيمة.</div></div><button id="logout" class="secondary">تسجيل الخروج</button></div>
-    <div class="panel"><div class="filters"><div class="field"><label for="monthSelect">شهر المرتب</label><select id="monthSelect" disabled><option value="">جاري التحميل…</option></select></div><div class="field"><label for="branchSelect">الفرع</label><select id="branchSelect" disabled><option value="">اختار الشهر أولًا</option></select></div><div class="field"><label for="employeeSelect">الموظف</label><select id="employeeSelect" disabled><option value="">اختار الفرع أولًا</option></select></div></div><div id="dataError" class="error hide" role="alert"></div><p id="hint" class="muted" style="text-align:center;margin:20px 0 0">اختار شهر المرتب لبدء البحث.</p></div>
-    <section id="slipPanel" class="panel hide"><article id="slipCard" class="slip"></article><div class="row actions"><button id="downloadBtn">تنزيل صورة PNG</button><button id="shareBtn" class="secondary">مشاركة الصورة</button></div></section>
-  </section>
-</main>
-<script>
+
 const SUPABASE_URL='https://reubtwlfjbwqfdbolzgx.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJldWJ0d2xmamJ3cWZkYm9semd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMjU0MDMsImV4cCI6MjEwODcwMTQwM30.qwawzY613Rf9xdbqk2Qqg2IHPgJYXN0GmxN9ViC4ZLQ';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-const $=id=>document.getElementById(id);const money=new Intl.NumberFormat('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2});
+const $=id=>document.getElementById(id);const money=new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:true});
 const num=x=>Number.isFinite(Number(x))?Number(x):0;const fmt=x=>money.format(num(x));let rows=[],selected=null,monthKey='';
 const labels={branch:'الفرع',t:'الفئة',h:'الساعات',days:'أيام الحضور',abs:'غياب بدون إذن',hol:'الإجازات الرسمية',ot:'الساعات الإضافية',late:'التأخيرات',penalties:'أيام الجزاءات',disc:'إجمالي الخصم',rate:'قيمة الساعة',hr:'سعر الساعة',trips:'عدد التحويلات',tr:'سعر التحويلة',orders:'عدد الأوردرات',or:'سعر الأوردر',allow:'العدية',adv:'السلف',sh:'العجز',ins:'التأمينات',bonus:'الحافز',pm:'طريقة القبض'};
 const counts=new Set(['h','days','abs','hol','ot','late','penalties','trips','orders']);
@@ -51,5 +30,4 @@ async function imageBlob(){if(!selected)throw new Error('no_slip');await documen
 async function saveImage(share){try{const blob=await imageBlob(),file=new File([blob],`payslip-${monthKey}-${selected.code||'employee'}.png`,{type:'image/png'});if(share&&navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:`مفردات مرتب ${selected.name||''}`});return}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);if(share)alert('المشاركة المباشرة غير متاحة في هذا المتصفح؛ تم تنزيل الصورة لتشاركها يدويًا.')}catch(e){if(e.name!=='AbortError')alert('تعذر تجهيز الصورة. جرّب تنزيلها مرة أخرى.');console.error(e)}}
 $('downloadBtn').addEventListener('click',()=>saveImage(false));$('shareBtn').addEventListener('click',()=>saveImage(true));
 (async()=>{const {data:{session}}=await db.auth.getSession();if(session)await showApp()})();
-</script>
-</body></html>
+
